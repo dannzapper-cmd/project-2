@@ -94,7 +94,12 @@
   --sidebar-border: rgba(255, 255, 255, 0.08);
   --sidebar-ring: #8B5CF6;
   
-  /* Neural Glass design system */
+  /* Neural Glass design system (Block 1A tokens) */
+  --color-accent: 263 70% 60%;
+  --color-accent-light: 270 90% 87%;
+  --color-surface: 222 47% 9%;
+  --color-card: 222 47% 12%;
+  --font-mono-label: "JetBrains Mono", monospace;
   --safe-area-inset-top: env(safe-area-inset-top, 0px);
   --safe-area-inset-right: env(safe-area-inset-right, 0px);
   --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
@@ -134,7 +139,12 @@
   --sidebar-border: rgba(255, 255, 255, 0.08);
   --sidebar-ring: #8B5CF6;
   
-  /* Neural Glass design system */
+  /* Neural Glass design system (Block 1A tokens) */
+  --color-accent: 263 70% 60%;
+  --color-accent-light: 270 90% 87%;
+  --color-surface: 222 47% 9%;
+  --color-card: 222 47% 12%;
+  --font-mono-label: "JetBrains Mono", monospace;
   --safe-area-inset-top: env(safe-area-inset-top, 0px);
   --safe-area-inset-right: env(safe-area-inset-right, 0px);
   --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);

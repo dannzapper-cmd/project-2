@@ -4,10 +4,11 @@ import { ScanLine, Upload, FlaskConical, Lock, CheckCircle, Layers } from "lucid
 import Link from "next/link"
 import { Header } from "@/components/shared/header"
 import { BottomNav } from "@/components/shared/bottom-nav"
+import { PreviewBanner } from "@/components/shared/preview-banner"
 
 const statusChips = [
-  { label: "Private by default", icon: Lock },
-  { label: "Evidence-backed", icon: CheckCircle },
+  { label: "Privacy-first (planned)", icon: Lock },
+  { label: "Evidence-ready", icon: CheckCircle },
   { label: "Confidence-aware", icon: Layers },
 ]
 
@@ -15,6 +16,7 @@ export function HomeScreen() {
   return (
     <div className="min-h-screen flex flex-col bg-background pb-24">
       <Header variant="default" />
+      <PreviewBanner className="mb-2" />
 
       <main className="flex-1 flex flex-col px-5 py-4">
         {/* Main scan card */}
@@ -31,7 +33,8 @@ export function HomeScreen() {
 
           {/* Subtext */}
           <p className="text-sm text-muted-foreground leading-relaxed mb-6">
-            Ready to explore. Point your camera at a label to begin.
+            Preview the scan flow. Camera and upload are planned for a future
+            block.
           </p>
 
           {/* Primary CTA */}
@@ -47,9 +50,17 @@ export function HomeScreen() {
         {/* Secondary action cards */}
         <div className="grid grid-cols-2 gap-3 mb-6">
           {/* Upload Image */}
-          <button className="flex flex-col items-center justify-center gap-2 p-5 rounded-2xl border border-white/8 bg-slate-900/50 hover:bg-slate-800/60 transition-colors touch-target">
+          <button
+            type="button"
+            disabled
+            aria-disabled="true"
+            title="Upload preview — not available yet"
+            className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-white/8 bg-slate-900/50 p-5 opacity-50 touch-target cursor-not-allowed"
+          >
             <Upload className="w-6 h-6 text-slate-400" />
-            <span className="text-sm font-medium text-foreground">Upload Image</span>
+            <span className="text-sm font-medium text-foreground">
+              Upload (preview)
+            </span>
           </button>
 
           {/* Try Sample */}

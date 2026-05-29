@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { AppShell } from "@/components/layout/app-shell";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -15,7 +16,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "SnapInsight",
   description:
-    "AI visual companion for products — multimodal analysis with grounded insights.",
+    "Visual companion for products — grounded insights with evidence and confidence (in development).",
   applicationName: "SnapInsight",
   appleWebApp: {
     capable: true,
@@ -48,8 +49,8 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} dark h-full antialiased bg-background`}
       suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col touch-manipulation pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]">
-        {children}
+      <body className="flex min-h-full flex-col touch-manipulation pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]">
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );
