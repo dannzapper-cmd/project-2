@@ -4,17 +4,19 @@ import { Images, Zap } from "lucide-react"
 import Link from "next/link"
 import { Header } from "@/components/shared/header"
 import { BottomNav } from "@/components/shared/bottom-nav"
+import { PreviewBanner } from "@/components/shared/preview-banner"
 
 const detectionTags = [
-  { label: "Brand detected", top: "22%", left: "50%", translateX: "-50%" },
-  { label: "Ingredients", top: "48%", left: "15%" },
-  { label: "Nutrition Facts", top: "68%", left: "55%" },
+  { label: "Sample: Brand label", top: "22%", left: "50%", translateX: "-50%" },
+  { label: "Sample: Ingredients", top: "48%", left: "15%" },
+  { label: "Sample: Nutrition facts", top: "68%", left: "55%" },
 ]
 
 export function ScanScreen() {
   return (
     <div className="min-h-screen flex flex-col bg-background pb-24">
       <Header variant="default" />
+      <PreviewBanner className="mb-2" />
 
       <main className="flex-1 flex flex-col px-5 py-4">
         {/* Viewfinder area */}
@@ -34,7 +36,7 @@ export function ScanScreen() {
           {/* Processing status */}
           <div className="absolute top-8 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 bg-slate-800/90 border border-white/10 rounded-full z-10">
             <div className="w-2 h-2 bg-violet-500 rounded-full animate-pulse" />
-            <span className="mono-label text-slate-300">Processing</span>
+            <span className="mono-label text-slate-300">Scan preview</span>
           </div>
 
           {/* Detection tags */}
@@ -59,7 +61,13 @@ export function ScanScreen() {
         {/* Capture controls */}
         <div className="flex items-center justify-center gap-8 py-6">
           {/* Gallery button */}
-          <button className="flex items-center justify-center w-12 h-12 rounded-full bg-slate-800/80 border border-white/10 hover:bg-slate-700/80 transition-colors touch-target">
+          <button
+            type="button"
+            disabled
+            aria-disabled="true"
+            title="Gallery preview — not available yet"
+            className="flex h-12 w-12 cursor-not-allowed items-center justify-center rounded-full border border-white/10 bg-slate-800/80 opacity-50 touch-target"
+          >
             <Images className="w-5 h-5 text-slate-400" />
           </button>
 
@@ -72,14 +80,21 @@ export function ScanScreen() {
           </Link>
 
           {/* Flash button */}
-          <button className="flex items-center justify-center w-12 h-12 rounded-full bg-slate-800/80 border border-white/10 hover:bg-slate-700/80 transition-colors touch-target">
+          <button
+            type="button"
+            disabled
+            aria-disabled="true"
+            title="Flash preview — not available yet"
+            className="flex h-12 w-12 cursor-not-allowed items-center justify-center rounded-full border border-white/10 bg-slate-800/80 opacity-50 touch-target"
+          >
             <Zap className="w-5 h-5 text-slate-400" />
           </button>
         </div>
 
         {/* Privacy note */}
-        <p className="text-xs text-muted-foreground text-center">
-          Images are used only for this analysis.
+        <p className="text-center text-xs text-muted-foreground">
+          Planned: images used only for analysis. Camera not connected in this
+          preview.
         </p>
       </main>
 

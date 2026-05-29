@@ -1,10 +1,11 @@
-// Mock data for SnapInsight UI shell
+// Mock data for SnapInsight UI shell (preview only — not live analysis)
 
 export const mockProduct = {
   name: "Organic Greek Yogurt",
-  confidence: "HIGH CONFIDENCE",
+  confidence: "Sample · High confidence preview",
   image: "/images/yogurt-placeholder.jpg",
-  quickTake: "A high-protein, low-sugar option suitable for most clean-eating routines. Fermentation process looks authentic with active cultures present. Excellent choice for a post-workout recovery snack.",
+  quickTake:
+    "Sample mock analysis for UI preview. Informational context about a high-protein, low-sugar yogurt-style product—not medical advice. Always verify ingredients and allergens on the product label.",
   ingredients: [
     { name: "Cultured Pasteurized Milk", status: "safe" as const },
     { name: "Cream", status: "safe" as const },
@@ -13,17 +14,18 @@ export const mockProduct = {
   ],
   allergens: {
     contains: ["Dairy"],
-    warning: "Produced in a facility that also processes tree nuts. Cross-contamination risk is low but present.",
+    warning:
+      "Sample allergen note for preview. Facility and cross-contamination details would come from cited sources when available.",
   },
   nutritionNotes: [
     {
       title: "Protein Dense",
-      description: "15g per serving. High bioavailability ratio.",
+      description: "Sample note: 15g per serving (mock values for layout).",
       icon: "protein" as const,
     },
     {
       title: "Low Sugar",
-      description: "Only 4g naturally occurring sugars. No added sweeteners.",
+      description: "Sample note: naturally occurring sugars only (mock).",
       icon: "sugar" as const,
     },
   ],
@@ -35,14 +37,14 @@ export const mockProduct = {
 }
 
 export const mockDetectionTags = [
-  { label: "Brand detected", position: { top: "25%", left: "50%" } },
-  { label: "Ingredients", position: { top: "50%", left: "20%" } },
-  { label: "Nutrition Facts", position: { top: "70%", left: "60%" } },
+  { label: "Sample: Brand label", position: { top: "25%", left: "50%" } },
+  { label: "Sample: Ingredients", position: { top: "50%", left: "20%" } },
+  { label: "Sample: Nutrition facts", position: { top: "70%", left: "60%" } },
 ]
 
 export const statusChips = [
-  { label: "Private by default", icon: "lock" as const },
-  { label: "Evidence-backed", icon: "check" as const },
+  { label: "Privacy-first (planned)", icon: "lock" as const },
+  { label: "Evidence-ready", icon: "check" as const },
   { label: "Confidence-aware", icon: "layers" as const },
 ]
 

@@ -15,14 +15,16 @@ import {
 } from "lucide-react"
 import { Header } from "@/components/shared/header"
 import { BottomNav } from "@/components/shared/bottom-nav"
+import { PreviewBanner } from "@/components/shared/preview-banner"
 import { mockProduct } from "@/lib/mock-data"
 
 export function ResultScreen() {
   return (
     <div className="min-h-screen flex flex-col bg-background pb-28">
       <Header variant="back" />
+      <PreviewBanner className="mb-2" />
 
-      <main className="flex-1 flex flex-col px-5 py-2 overflow-y-auto">
+      <main className="flex-1 flex flex-col overflow-y-auto px-5 py-2">
         {/* Confidence badge */}
         <div className="flex items-center gap-2 mb-3">
           <div className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-500/15 border border-violet-500/30 rounded-full">
@@ -60,7 +62,7 @@ export function ResultScreen() {
         <div className="glass-card p-5 mb-4">
           <div className="flex items-center gap-2 mb-3">
             <Sparkles className="w-5 h-5 text-violet-400" />
-            <h2 className="text-lg font-semibold text-foreground">Quick Take</h2>
+            <h2 className="text-lg font-semibold text-foreground">Quick Take (sample)</h2>
           </div>
           <p className="text-sm text-muted-foreground leading-relaxed">
             {mockProduct.quickTake}
@@ -145,17 +147,38 @@ export function ResultScreen() {
         <div className="mb-6">
           <h3 className="mono-label text-muted-foreground mb-3">Better questions to ask</h3>
           <div className="flex flex-col gap-2">
-            <button className="flex items-center gap-2 px-4 py-3 bg-slate-800/60 border border-white/8 rounded-full hover:bg-slate-700/60 transition-colors touch-target text-left">
+            <button
+              type="button"
+              disabled
+              aria-disabled="true"
+              className="flex cursor-not-allowed items-center gap-2 rounded-full border border-white/8 bg-slate-800/60 px-4 py-3 text-left opacity-50 touch-target"
+            >
               <FlaskConical className="w-4 h-4 text-violet-400" />
-              <span className="text-sm text-foreground">Show probiotic strains</span>
+              <span className="text-sm text-foreground">
+                Show probiotic strains (preview)
+              </span>
             </button>
-            <button className="flex items-center gap-2 px-4 py-3 bg-slate-800/60 border border-white/8 rounded-full hover:bg-slate-700/60 transition-colors touch-target text-left">
+            <button
+              type="button"
+              disabled
+              aria-disabled="true"
+              className="flex cursor-not-allowed items-center gap-2 rounded-full border border-white/8 bg-slate-800/60 px-4 py-3 text-left opacity-50 touch-target"
+            >
               <GitCompareArrows className="w-4 h-4 text-violet-400" />
-              <span className="text-sm text-foreground">Compare with regular yogurt</span>
+              <span className="text-sm text-foreground">
+                Compare with regular yogurt (preview)
+              </span>
             </button>
-            <button className="flex items-center gap-2 px-4 py-3 bg-slate-800/60 border border-white/8 rounded-full hover:bg-slate-700/60 transition-colors touch-target text-left">
+            <button
+              type="button"
+              disabled
+              aria-disabled="true"
+              className="flex cursor-not-allowed items-center gap-2 rounded-full border border-white/8 bg-slate-800/60 px-4 py-3 text-left opacity-50 touch-target"
+            >
               <Leaf className="w-4 h-4 text-violet-400" />
-              <span className="text-sm text-foreground">Sustainability score</span>
+              <span className="text-sm text-foreground">
+                Sustainability score (preview)
+              </span>
             </button>
           </div>
         </div>
@@ -164,9 +187,14 @@ export function ResultScreen() {
         <div className="w-full h-px bg-white/5 mb-6" />
 
         {/* Citation */}
-        <button className="flex items-center gap-2 text-muted-foreground mb-4 hover:text-foreground transition-colors">
+        <button
+          type="button"
+          disabled
+          aria-disabled="true"
+          className="mb-4 flex cursor-not-allowed items-center gap-2 text-muted-foreground opacity-50"
+        >
           <Database className="w-4 h-4" />
-          <span className="text-sm">Open product data source</span>
+          <span className="text-sm">Sources preview (planned citations)</span>
         </button>
 
         {/* Fallback card */}
