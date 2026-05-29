@@ -8,20 +8,9 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: "JetBrains Mono", monospace;
-  --font-heading: var(--font-geist-sans);
-  
-  /* Neural Glass Colors */
-  --color-violet-500: #8B5CF6;
-  --color-violet-400: #A78BFA;
-  --color-violet-300: #D8B4FE;
-  --color-coral: #F87171;
-  --color-surface: #0F172A;
-  --color-surface-elevated: #1E293B;
-  --color-glass-border: rgba(255, 255, 255, 0.08);
-  
-  /* Shadcn tokens */
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -61,38 +50,44 @@
 }
 
 :root {
-  --background: #0A0E1A;
-  --foreground: #F1F5F9;
-  --card: #0F172A;
-  --card-foreground: #F1F5F9;
-  --popover: #0F172A;
-  --popover-foreground: #F1F5F9;
-  --primary: #8B5CF6;
-  --primary-foreground: #FFFFFF;
-  --secondary: #1E293B;
-  --secondary-foreground: #F1F5F9;
-  --muted: #1E293B;
-  --muted-foreground: #94A3B8;
-  --accent: #8B5CF6;
-  --accent-foreground: #FFFFFF;
-  --destructive: #F87171;
-  --border: rgba(255, 255, 255, 0.08);
-  --input: rgba(255, 255, 255, 0.08);
-  --ring: #8B5CF6;
-  --chart-1: #8B5CF6;
-  --chart-2: #A78BFA;
-  --chart-3: #D8B4FE;
-  --chart-4: #1E293B;
-  --chart-5: #0F172A;
-  --radius: 1.5rem;
-  --sidebar: #0F172A;
-  --sidebar-foreground: #F1F5F9;
-  --sidebar-primary: #8B5CF6;
-  --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #1E293B;
-  --sidebar-accent-foreground: #F1F5F9;
-  --sidebar-border: rgba(255, 255, 255, 0.08);
-  --sidebar-ring: #8B5CF6;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+  /* Neural Glass design system (light fallback; app is dark-first) */
+  --color-accent: 263 70% 60%;
+  --color-accent-light: 270 90% 87%;
+  --color-surface: 222 47% 9%;
+  --color-card: 222 47% 12%;
+  --font-mono-label: "JetBrains Mono", monospace;
   --safe-area-inset-top: env(safe-area-inset-top, 0px);
   --safe-area-inset-right: env(safe-area-inset-right, 0px);
   --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
@@ -100,37 +95,43 @@
 }
 
 .dark {
-  --background: #0A0E1A;
-  --foreground: #F1F5F9;
-  --card: #0F172A;
-  --card-foreground: #F1F5F9;
-  --popover: #0F172A;
-  --popover-foreground: #F1F5F9;
-  --primary: #8B5CF6;
-  --primary-foreground: #FFFFFF;
-  --secondary: #1E293B;
-  --secondary-foreground: #F1F5F9;
-  --muted: #1E293B;
-  --muted-foreground: #94A3B8;
-  --accent: #8B5CF6;
-  --accent-foreground: #FFFFFF;
-  --destructive: #F87171;
-  --border: rgba(255, 255, 255, 0.08);
-  --input: rgba(255, 255, 255, 0.08);
-  --ring: #8B5CF6;
-  --chart-1: #8B5CF6;
-  --chart-2: #A78BFA;
-  --chart-3: #D8B4FE;
-  --chart-4: #1E293B;
-  --chart-5: #0F172A;
-  --sidebar: #0F172A;
-  --sidebar-foreground: #F1F5F9;
-  --sidebar-primary: #8B5CF6;
-  --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #1E293B;
-  --sidebar-accent-foreground: #F1F5F9;
-  --sidebar-border: rgba(255, 255, 255, 0.08);
-  --sidebar-ring: #8B5CF6;
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+  /* Neural Glass design system (primary dark theme) */
+  --color-accent: 263 70% 60%;
+  --color-accent-light: 270 90% 87%;
+  --color-surface: 222 47% 9%;
+  --color-card: 222 47% 12%;
+  --font-mono-label: "JetBrains Mono", monospace;
   --safe-area-inset-top: env(safe-area-inset-top, 0px);
   --safe-area-inset-right: env(safe-area-inset-right, 0px);
   --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
@@ -147,74 +148,4 @@
   html {
     @apply font-sans;
   }
-}
-
-/* Glass card effect */
-.glass-card {
-  background: rgba(15, 23, 42, 0.8);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-/* Gradient button */
-.gradient-btn {
-  background: linear-gradient(135deg, #8B5CF6 0%, #D8B4FE 100%);
-}
-
-/* Mono label style */
-.mono-label {
-  font-family: "JetBrains Mono", monospace;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-size: 0.75rem;
-}
-
-/* Viewfinder corners */
-.viewfinder-corner {
-  position: absolute;
-  width: 24px;
-  height: 24px;
-  border-color: #8B5CF6;
-  border-width: 3px;
-}
-
-.viewfinder-corner-tl {
-  top: 0;
-  left: 0;
-  border-right: none;
-  border-bottom: none;
-  border-top-left-radius: 8px;
-}
-
-.viewfinder-corner-tr {
-  top: 0;
-  right: 0;
-  border-left: none;
-  border-bottom: none;
-  border-top-right-radius: 8px;
-}
-
-.viewfinder-corner-bl {
-  bottom: 0;
-  left: 0;
-  border-right: none;
-  border-top: none;
-  border-bottom-left-radius: 8px;
-}
-
-.viewfinder-corner-br {
-  bottom: 0;
-  right: 0;
-  border-left: none;
-  border-top: none;
-  border-bottom-right-radius: 8px;
-}
-
-/* Safe area padding utilities */
-.pt-safe {
-  padding-top: env(safe-area-inset-top, 0px);
-}
-
-.pb-safe {
-  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
