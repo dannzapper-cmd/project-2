@@ -8,6 +8,11 @@ Delivery is organized into **blocks**. Block count is not rigid: blocks may be c
 - Cursor rules and ignore patterns.
 - **Status:** Current block (documentation only).
 
+## Block 1A — Frontend foundation
+
+- Next.js App Router scaffold at repo root (`src/`), TypeScript, Tailwind, shadcn/ui init, minimal placeholder page.
+- Required before v0 screen-by-screen UI generation. No product screens yet.
+
 ## Block 1 — Premium UI / PWA shell
 
 - Next.js app scaffold, Tailwind, shadcn/ui, mobile layout, PWA manifest and service worker shell.
