@@ -1,0 +1,62 @@
+---
+description: SnapInsight project-wide Cursor rules for Block 0 and all future blocks.
+globs:
+alwaysApply: true
+---
+
+# SnapInsight — Cursor Rules
+
+## Project identity
+
+- **Name:** SnapInsight
+- **Tagline:** AI Visual Companion for Products
+- **Vertical (initial):** Food, packaged products, CPG
+- **Contrast:** Visual, mobile-first, multimodal consumer UX—not B2B agentic workflow tools like LeadForge
+
+## Current phase awareness
+
+- Check `README.md` **Current status** and `docs/roadmap.md` for the active block.
+- **Block 0:** Documentation and Cursor context only—no app runtime code.
+- Do **not** implement future blocks early (no AI, RAG, camera, voice, DB, auth, deploy unless the active block explicitly requires it).
+
+## Before every edit
+
+1. Inspect repository structure and existing files.
+2. Read any file with existing content in full before overwriting.
+3. Preserve aligned partial content; only replace content that contradicts SPEC non-goals or safety constraints.
+4. Summarize what exists and what will change when the task is non-trivial.
+
+## Scope and dependencies
+
+- Keep changes scoped to the requested block.
+- Prefer references to `SPEC.md` and `docs/` over repeating long context in prompts.
+- Do **not** add dependencies unless the current block explicitly asks.
+- Do **not** add secrets, `.env` values, or committed API keys.
+- Do **not** invent providers, deploy configs, databases, or storage before the relevant block.
+
+## Documentation standards
+
+- Use **planned**, **target**, or **future block** for unimplemented behavior.
+- Do **not** state features as already working.
+- Do **not** invent latency, accuracy, precision, or cost metrics; verify against official sources or omit.
+- `SPEC.md` is the single source of truth for stack, non-goals, and acceptance criteria.
+- `README.md` stays concise; do not duplicate the full stack table.
+
+## Privacy and safety (always)
+
+- No medical diagnosis, absolute health claims, or counterfeit/authenticity claims.
+- Cite data sources in product copy when surfacing RAG results.
+- Show uncertainty; confidence/fallback UX is required for identification flows.
+- Images: ephemeral by default; no unnecessary retention.
+
+## Implementation blocks (later)
+
+- Small, reviewable PRs with clear acceptance criteria from `SPEC.md` / `docs/roadmap.md`.
+- API keys and multimodal calls stay server-side.
+- One task ≈ one branch ≈ one PR when possible.
+- Run or add tests only when the block requires meaningful coverage.
+
+## Files to respect
+
+- Do not ignore or delete `README.md`, `SPEC.md`, `docs/`, or `.cursor/rules/` via `.cursorignore`.
+- Follow `.cursorignore` for high-noise paths (build artifacts, env files, datasets).
