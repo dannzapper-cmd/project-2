@@ -19,15 +19,69 @@ function isSecureForCamera(): boolean {
   )
 }
 
+function getErrorName(err: unknown): string {
+  return err instanceof DOMException ? err.name : ""
+}
+
+function isPermissionDenied(err: unknown): boolean {
+  const name = getErrorName(err)
+  return name === "NotAllowedError" || name === "PermissionDeniedError"
+}
+
+/** Retry generic video only when environment-facing constraints likely failed. */
+function shouldRetryWithGenericVideo(err: unknown): boolean {
+  const name = getErrorName(err)
+  return (
+    name === "OverconstrainedError" ||
+    name === "ConstraintNotSatisfiedError" ||
+    name === "NotFoundError" ||
+    name === "DevicesNotFoundError"
+  )
+}
+
+function stopMediaStream(stream: MediaStream): void {
+  stream.getTracks().forEach((track) => track.stop())
+}
+
+async function acquireVideoStream(
+  getUserMedia: typeof navigator.mediaDevices.getUserMedia
+): Promise<MediaStream> {
+  try {
+    return await getUserMedia({
+      video: { facingMode: { ideal: "environment" } },
+      audio: false,
+    })
+  } catch (firstError) {
+    if (isPermissionDenied(firstError)) {
+      throw firstError
+    }
+    if (!shouldRetryWithGenericVideo(firstError)) {
+      throw firstError
+    }
+    return getUserMedia({
+      video: true,
+      audio: false,
+    })
+  }
+}
+
 export function useCameraSnapshot() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
+  const mountedRef = useRef(true)
+  const requestIdRef = useRef(0)
   const [status, setStatus] = useState<CameraStatus>("idle")
   const [message, setMessage] = useState<string | null>(null)
 
+  const safeSetState = useCallback((update: () => void) => {
+    if (mountedRef.current) {
+      update()
+    }
+  }, [])
+
   const stopStream = useCallback(() => {
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop())
+      stopMediaStream(streamRef.current)
       streamRef.current = null
     }
     const video = videoRef.current
@@ -36,112 +90,191 @@ export function useCameraSnapshot() {
     }
   }, [])
 
+  const invalidatePending = useCallback(() => {
+    requestIdRef.current += 1
+  }, [])
+
   useEffect(() => {
+    mountedRef.current = true
     return () => {
+      mountedRef.current = false
+      invalidatePending()
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop())
+        stopMediaStream(streamRef.current)
         streamRef.current = null
       }
     }
-  }, [])
+  }, [invalidatePending])
+
+  const applyCameraError = useCallback(
+    (err: unknown) => {
+      stopStream()
+      const name = getErrorName(err)
+
+      if (isPermissionDenied(err)) {
+        safeSetState(() => {
+          setStatus("denied")
+          setMessage("Camera permission denied. You can still upload an image.")
+        })
+      } else if (name === "NotFoundError" || name === "DevicesNotFoundError") {
+        safeSetState(() => {
+          setStatus("unsupported")
+          setMessage("No camera found. Try upload instead.")
+        })
+      } else if (name === "NotReadableError" || name === "TrackStartError") {
+        safeSetState(() => {
+          setStatus("error")
+          setMessage("Camera is in use or unavailable. Try upload instead.")
+        })
+      } else {
+        safeSetState(() => {
+          setStatus("error")
+          setMessage("Could not start camera. Try upload instead.")
+        })
+      }
+    },
+    [stopStream, safeSetState]
+  )
+
+  const attachStreamToVideo = useCallback(
+    async (stream: MediaStream, requestId: number) => {
+      if (requestId !== requestIdRef.current) {
+        stopMediaStream(stream)
+        return false
+      }
+
+      const video = videoRef.current
+      if (!video) {
+        stopMediaStream(stream)
+        return false
+      }
+
+      video.srcObject = stream
+      video.muted = true
+      video.playsInline = true
+      await video.play().catch(() => undefined)
+
+      if (requestId !== requestIdRef.current) {
+        video.srcObject = null
+        stopMediaStream(stream)
+        return false
+      }
+
+      return true
+    },
+    []
+  )
 
   const startCamera = useCallback(async () => {
+    const requestId = ++requestIdRef.current
     stopStream()
-    setMessage(null)
+    safeSetState(() => {
+      setMessage(null)
+    })
 
     if (!isSecureForCamera()) {
-      setStatus("insecure")
-      setMessage("Camera requires a secure connection (HTTPS).")
+      safeSetState(() => {
+        setStatus("insecure")
+        setMessage("Camera requires a secure connection (HTTPS).")
+      })
       return
     }
 
     if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
-      setStatus("unsupported")
-      setMessage("Camera not supported in this browser. Use upload instead.")
+      safeSetState(() => {
+        setStatus("unsupported")
+        setMessage("Camera not supported in this browser. Use upload instead.")
+      })
       return
     }
 
     try {
-      let stream: MediaStream
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: "environment" } },
-          audio: false,
-        })
-      } catch {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: false,
-        })
+      const stream = await acquireVideoStream(
+        navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices)
+      )
+
+      if (requestId !== requestIdRef.current) {
+        stopMediaStream(stream)
+        return
       }
 
       streamRef.current = stream
-      setStatus("active")
+      safeSetState(() => {
+        setStatus("active")
+        setMessage(null)
+      })
 
-      const attachAndPlay = async () => {
-        const video = videoRef.current
-        if (!video) return
-        video.srcObject = stream
-        video.muted = true
-        video.playsInline = true
-        await video.play().catch(() => undefined)
+      const attached = await attachStreamToVideo(stream, requestId)
+      if (!attached && requestId === requestIdRef.current) {
+        stopStream()
+        safeSetState(() => {
+          setStatus("error")
+          setMessage("Could not start camera preview. Try upload instead.")
+        })
       }
 
-      await attachAndPlay()
-      if (!videoRef.current?.srcObject) {
+      if (!attached && requestId !== requestIdRef.current) {
+        stopStream()
+        return
+      }
+
+      if (attached && !videoRef.current?.srcObject) {
         requestAnimationFrame(() => {
-          void attachAndPlay()
+          if (requestId !== requestIdRef.current || !streamRef.current) return
+          void attachStreamToVideo(streamRef.current, requestId)
         })
       }
     } catch (err) {
-      stopStream()
-      const name = err instanceof DOMException ? err.name : ""
-
-      if (name === "NotAllowedError" || name === "PermissionDeniedError") {
-        setStatus("denied")
-        setMessage("Camera permission denied. You can still upload an image.")
-      } else if (name === "NotFoundError" || name === "DevicesNotFoundError") {
-        setStatus("unsupported")
-        setMessage("No camera found. Try upload instead.")
-      } else if (name === "NotReadableError" || name === "TrackStartError") {
-        setStatus("error")
-        setMessage("Camera is in use or unavailable. Try upload instead.")
-      } else {
-        setStatus("error")
-        setMessage("Could not start camera. Try upload instead.")
+      if (requestId !== requestIdRef.current) {
+        return
       }
+      applyCameraError(err)
     }
-  }, [stopStream])
+  }, [stopStream, safeSetState, attachStreamToVideo, applyCameraError])
 
   const stopCamera = useCallback(() => {
+    invalidatePending()
     stopStream()
-    setStatus("idle")
-    setMessage(null)
-  }, [stopStream])
+    safeSetState(() => {
+      setStatus("idle")
+      setMessage(null)
+    })
+  }, [invalidatePending, stopStream, safeSetState])
 
   const captureSnapshot = useCallback(async (): Promise<Blob | null> => {
     const video = videoRef.current
-    if (!video || !streamRef.current) return null
+    if (!video || !streamRef.current) {
+      return null
+    }
 
     const width = video.videoWidth
     const height = video.videoHeight
-    if (!width || !height) return null
+    if (!width || !height) {
+      safeSetState(() => {
+        setMessage("Camera is still starting. Try again in a moment.")
+      })
+      return null
+    }
 
     const canvas = document.createElement("canvas")
     canvas.width = width
     canvas.height = height
     const ctx = canvas.getContext("2d")
-    if (!ctx) return null
+    if (!ctx) {
+      return null
+    }
 
     ctx.drawImage(video, 0, 0, width, height)
     stopStream()
-    setStatus("idle")
-    setMessage(null)
+    safeSetState(() => {
+      setStatus("idle")
+      setMessage(null)
+    })
 
     return new Promise<Blob | null>((resolve) => {
       canvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.92)
     })
-  }, [stopStream])
+  }, [stopStream, safeSetState])
 
   return {
     videoRef,

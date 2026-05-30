@@ -67,7 +67,9 @@ export function ImageInputPanel({ className }: ImageInputPanelProps) {
     const blob = await captureSnapshot()
     if (blob) {
       setFromBlob(blob)
+      return
     }
+    // captureSnapshot sets cameraMessage when video is not ready yet
   }, [captureSnapshot, setFromBlob])
 
   const handleClear = useCallback(() => {
