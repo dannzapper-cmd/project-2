@@ -1,0 +1,246 @@
+"use client"
+
+import { useCallback, useId, useRef } from "react"
+import { Images, Zap } from "lucide-react"
+import Link from "next/link"
+import { cn } from "@/lib/utils"
+import { useCameraSnapshot } from "@/hooks/use-camera-snapshot"
+import { useLocalImagePreview } from "@/hooks/use-local-image-preview"
+
+function getStatusLabel(
+  hasImage: boolean,
+  cameraStatus: ReturnType<typeof useCameraSnapshot>["status"]
+): string {
+  if (hasImage) return "Image ready"
+  if (cameraStatus === "active") return "Camera active"
+  if (cameraStatus === "denied") return "Camera permission denied"
+  if (cameraStatus === "insecure") return "Camera not available"
+  if (cameraStatus === "unsupported") return "Camera not supported"
+  if (cameraStatus === "error") return "Camera unavailable"
+  return "No image selected"
+}
+
+interface ImageInputPanelProps {
+  className?: string
+}
+
+export function ImageInputPanel({ className }: ImageInputPanelProps) {
+  const fileInputId = useId()
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const {
+    previewUrl,
+    error: uploadError,
+    hasImage,
+    setFromFile,
+    setFromBlob,
+    clear,
+  } = useLocalImagePreview()
+  const {
+    videoRef,
+    status: cameraStatus,
+    message: cameraMessage,
+    isActive: isCameraActive,
+    startCamera,
+    stopCamera,
+    captureSnapshot,
+  } = useCameraSnapshot()
+
+  const statusLabel = getStatusLabel(hasImage, cameraStatus)
+  const showMockOverlay = !hasImage && !isCameraActive
+
+  const handleFileChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0]
+      if (!file) return
+      stopCamera()
+      setFromFile(file)
+      event.target.value = ""
+    },
+    [setFromFile, stopCamera]
+  )
+
+  const handleUploadClick = useCallback(() => {
+    fileInputRef.current?.click()
+  }, [])
+
+  const handleCapture = useCallback(async () => {
+    const blob = await captureSnapshot()
+    if (blob) {
+      setFromBlob(blob)
+    }
+  }, [captureSnapshot, setFromBlob])
+
+  const handleClear = useCallback(() => {
+    stopCamera()
+    clear()
+  }, [stopCamera, clear])
+
+  const handleRetake = useCallback(() => {
+    clear()
+    void startCamera()
+  }, [clear, startCamera])
+
+  const handleCenterAction = useCallback(() => {
+    if (hasImage) return
+    if (isCameraActive) {
+      void handleCapture()
+      return
+    }
+    void startCamera()
+  }, [hasImage, isCameraActive, handleCapture, startCamera])
+
+  return (
+    <div className={cn("flex flex-col", className)}>
+      <input
+        ref={fileInputRef}
+        id={fileInputId}
+        type="file"
+        accept="image/*"
+        className="sr-only"
+        onChange={handleFileChange}
+        aria-label="Upload product image"
+      />
+
+      {/* Viewfinder / preview */}
+      <div className="relative min-h-[400px] max-h-[500px] flex-1 overflow-hidden rounded-3xl bg-gradient-to-b from-slate-800/40 to-slate-900/60">
+        {showMockOverlay && (
+          <div className="pointer-events-none absolute inset-4">
+            <div className="absolute top-0 left-0 h-8 w-8 rounded-tl-xl border-l-2 border-t-2 border-violet-500" />
+            <div className="absolute top-0 right-0 h-8 w-8 rounded-tr-xl border-r-2 border-t-2 border-violet-500" />
+            <div className="absolute bottom-0 left-0 h-8 w-8 rounded-bl-xl border-l-2 border-b-2 border-violet-500" />
+            <div className="absolute bottom-0 right-0 h-8 w-8 rounded-br-xl border-r-2 border-b-2 border-violet-500" />
+            <div className="absolute inset-12 rounded-2xl border border-dashed border-white/10" />
+          </div>
+        )}
+
+        <video
+          ref={videoRef}
+          className={cn(
+            "absolute inset-0 h-full w-full object-cover",
+            !isCameraActive && "pointer-events-none opacity-0"
+          )}
+          muted
+          playsInline
+          autoPlay
+          aria-hidden={!isCameraActive}
+          aria-label="Camera preview"
+        />
+
+        {hasImage && previewUrl && (
+          // eslint-disable-next-line @next/next/no-img-element -- local blob preview only
+          <img
+            src={previewUrl}
+            alt="Selected product preview"
+            className="absolute inset-0 h-full w-full object-contain bg-slate-950/80"
+          />
+        )}
+
+        {!hasImage && !isCameraActive && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
+            <p className="text-sm text-muted-foreground">
+              Upload a photo or start the camera to capture a product image.
+            </p>
+          </div>
+        )}
+
+        <div className="absolute top-8 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/10 bg-slate-800/90 px-4 py-2">
+          {isCameraActive && (
+            <div className="h-2 w-2 animate-pulse rounded-full bg-violet-500" />
+          )}
+          <span className="mono-label text-slate-300">{statusLabel}</span>
+        </div>
+      </div>
+
+      {/* Errors */}
+      {(uploadError || cameraMessage) && (
+        <p
+          className="mt-3 text-center text-sm text-red-400"
+          role="alert"
+        >
+          {uploadError ?? cameraMessage}
+        </p>
+      )}
+
+      {/* Image actions */}
+      {hasImage && (
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+          <button
+            type="button"
+            onClick={handleClear}
+            className="touch-target rounded-full border border-white/10 bg-slate-800/80 px-4 py-2 text-sm font-medium text-foreground hover:bg-slate-700/80"
+          >
+            Remove image
+          </button>
+          <button
+            type="button"
+            onClick={handleRetake}
+            className="touch-target rounded-full border border-white/10 bg-slate-800/80 px-4 py-2 text-sm font-medium text-foreground hover:bg-slate-700/80"
+          >
+            Retake
+          </button>
+          <Link
+            href="/result"
+            className="touch-target rounded-full border border-violet-500/30 bg-violet-500/15 px-4 py-2 text-sm font-medium text-violet-300 hover:bg-violet-500/25"
+          >
+            Sample result (mock)
+          </Link>
+        </div>
+      )}
+
+      {/* Capture controls */}
+      <div className="flex items-center justify-center gap-6 py-6 sm:gap-8">
+        <button
+          type="button"
+          onClick={handleUploadClick}
+          className="touch-target flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-slate-800/80 hover:bg-slate-700/80"
+          aria-label="Upload image from gallery"
+        >
+          <Images className="h-5 w-5 text-slate-400" />
+        </button>
+
+        <button
+          type="button"
+          onClick={handleCenterAction}
+          disabled={hasImage}
+          className={cn(
+            "touch-target flex h-16 w-16 items-center justify-center rounded-full shadow-lg shadow-violet-500/30 transition-colors",
+            hasImage
+              ? "cursor-not-allowed bg-slate-700 opacity-50"
+              : "bg-violet-400 hover:bg-violet-300"
+          )}
+          aria-label={
+            isCameraActive ? "Capture snapshot" : "Start camera"
+          }
+        >
+          <div className="h-14 w-14 rounded-full border-2 border-slate-900/30" />
+        </button>
+
+        <button
+          type="button"
+          disabled
+          aria-disabled="true"
+          title="Flash not available"
+          className="touch-target flex h-12 w-12 cursor-not-allowed items-center justify-center rounded-full border border-white/10 bg-slate-800/80 opacity-50"
+        >
+          <Zap className="h-5 w-5 text-slate-400" />
+        </button>
+      </div>
+
+      {isCameraActive && (
+        <div className="mb-2 flex justify-center">
+          <button
+            type="button"
+            onClick={stopCamera}
+            className="touch-target rounded-full border border-white/10 px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-white/5"
+          >
+            Stop camera
+          </button>
+        </div>
+      )}
+
+      <p className="text-center text-xs text-muted-foreground">
+        Images stay local in this step. No upload or analysis yet.
+      </p>
+    </div>
+  )
+}

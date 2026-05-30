@@ -23,10 +23,14 @@ Delivery is organized into **blocks**. Block count is not rigid: blocks may be c
 - Next.js app scaffold, Tailwind, shadcn/ui, mobile layout, PWA manifest and service worker shell.
 - Placeholder routes; no real AI.
 
-## Block 2 — Upload + camera snapshot
+## Block 2A — Upload + camera snapshot (client)
 
-- Image picker and `getUserMedia` capture flows.
-- Client validation, preview, EXIF strip (planned).
+- Real file upload, `getUserMedia` snapshot, local preview, and stream cleanup.
+- EXIF strip planned for a later block.
+
+## Block 2 — Upload + camera snapshot (remaining)
+
+- EXIF strip, shared image state across routes if needed, polish.
 
 ## Block 3 — FastAPI backend + API contract
 

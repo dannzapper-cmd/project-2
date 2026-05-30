@@ -33,8 +33,8 @@ export function HomeScreen() {
 
           {/* Subtext */}
           <p className="text-sm text-muted-foreground leading-relaxed mb-6">
-            Preview the scan flow. Camera and upload are planned for a future
-            block.
+            Upload a photo or capture with your camera on the scan screen. Analysis
+            is not connected yet.
           </p>
 
           {/* Primary CTA */}
@@ -50,18 +50,15 @@ export function HomeScreen() {
         {/* Secondary action cards */}
         <div className="grid grid-cols-2 gap-3 mb-6">
           {/* Upload Image */}
-          <button
-            type="button"
-            disabled
-            aria-disabled="true"
-            title="Upload preview — not available yet"
-            className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-white/8 bg-slate-900/50 p-5 opacity-50 touch-target cursor-not-allowed"
+          <Link
+            href="/scan"
+            className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-white/8 bg-slate-900/50 p-5 hover:bg-slate-800/60 transition-colors touch-target"
           >
             <Upload className="w-6 h-6 text-slate-400" />
             <span className="text-sm font-medium text-foreground">
-              Upload (preview)
+              Upload image
             </span>
-          </button>
+          </Link>
 
           {/* Try Sample */}
           <Link 
