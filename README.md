@@ -25,8 +25,9 @@ The current implementation includes the PWA shell, image upload/camera snapshot,
 FastAPI analysis API, Gemini real-analysis mode, OpenFoodFacts grounding,
 contextual chat, browser-only Voice Lite, Compare Mode Lite, in-memory
 cache/metrics, Product Knowledge Graph / GraphRAG Lite, Live Product Session
-Lite, offline tuning references, optional Langfuse LLMOps visibility, deploy
-readiness docs, offline eval fixtures, and smoke checks.
+Lite, Gemini Live integration disabled by environment until activation, offline
+tuning references, optional Langfuse LLMOps visibility, deploy readiness docs,
+offline eval fixtures, and smoke checks.
 
 ## Planned stack (not implemented)
 
@@ -36,10 +37,11 @@ Target architecture favors API-first, cloud-first delivery: a **Next.js** PWA wi
 
 ## Current status
 
-**Block 18D — Focused LLMOps + DevOps visibility.** The current backend includes
-optional Langfuse observability for key API flows with safe aggregate metadata
-only. It adds no auth, new database, Gemini Live, fine-tuning serving, or new
-uploaded-file persistence.
+**Block 18E — Gemini Live full integration, disabled until activation.** The
+current code path supports backend-minted Gemini Live ephemeral tokens and a
+browser Live Voice + Vision panel, but deployment defaults keep it off until the
+owner enables the Render env vars. It adds no auth, new database, WebRTC
+infrastructure, session persistence, or media storage.
 
 ## Documentation
 
@@ -54,6 +56,7 @@ uploaded-file persistence.
 | [docs/deploy.md](./docs/deploy.md) | Deploy readiness guide and required env vars |
 | [docs/smoke-test.md](./docs/smoke-test.md) | Automated and manual post-deploy smoke checks |
 | [docs/llmops.md](./docs/llmops.md) | Optional Langfuse LLMOps setup, privacy guarantees, and verification |
+| [docs/gemini-live.md](./docs/gemini-live.md) | Gemini Live ephemeral-token architecture, activation, and QA |
 
 ## Limitations (summary)
 

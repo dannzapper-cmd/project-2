@@ -4,16 +4,26 @@ import time
 import uuid
 from contextlib import asynccontextmanager
 
-from fastapi import Body, FastAPI, File, HTTPException, UploadFile
+from fastapi import Body, FastAPI, File, Header, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
-from app.config import ConfigurationError, get_effective_analysis_mode, get_settings
+from app.config import (
+    DEFAULT_GEMINI_LIVE_MODEL,
+    ConfigurationError,
+    get_effective_analysis_mode,
+    get_settings,
+)
 from app.schemas import (
     AnalyzeImageResponse,
     CompareProductsRequest,
     CompareProductsResponse,
+    GeminiLiveConfigResponse,
+    GeminiLiveTelemetryRequest,
+    GeminiLiveTelemetryResponse,
+    GeminiLiveTokenRequest,
+    GeminiLiveTokenResponse,
     HealthResponse,
     MetricsSummaryResponse,
     ProductChatRequest,
@@ -24,6 +34,19 @@ from app.schemas import (
 from app.services.analysis_router import (
     AnalysisUnavailableError,
     analyze_product_image,
+)
+from app.services.gemini_live import (
+    GeminiLiveTokenError,
+    access_code_matches,
+    access_denied_token_response,
+    build_live_config,
+    create_live_token,
+    disabled_token_response,
+    get_live_status,
+    live_guardrail,
+    not_configured_token_response,
+    rate_limited_token_response,
+    token_error_response,
 )
 from app.services.llmops import llmops
 from app.services.metrics import metrics
@@ -62,6 +85,21 @@ def latency_ms(started_at: float) -> int:
 
 def llmops_status_fields() -> dict[str, str | bool | None]:
     return llmops.status.api_fields()
+
+
+def live_status_fields_from_settings(settings) -> dict[str, str | bool]:
+    return get_live_status(settings).api_fields()
+
+
+def live_status_fields_from_env() -> dict[str, str | bool]:
+    enabled = os.getenv("SNAPINSIGHT_GEMINI_LIVE_ENABLED", "").strip().lower() == "true"
+    model = os.getenv("SNAPINSIGHT_GEMINI_LIVE_MODEL", "").strip() or DEFAULT_GEMINI_LIVE_MODEL
+    return {
+        "gemini_live_enabled": enabled,
+        "gemini_live_configured": bool(enabled and os.getenv("GEMINI_API_KEY", "").strip()),
+        "gemini_live_provider": "gemini_live",
+        "gemini_live_model": model,
+    }
 
 
 def trace_backend_event(name: str, metadata: dict) -> None:
@@ -178,6 +216,7 @@ async def health() -> HealthResponse | JSONResponse:
         settings = get_settings()
     except ConfigurationError as exc:
         llmops_fields = llmops_status_fields()
+        live_fields = live_status_fields_from_env()
         return JSONResponse(
             status_code=500,
             content={
@@ -190,6 +229,7 @@ async def health() -> HealthResponse | JSONResponse:
                 "mock_fallback_allowed": False,
                 "message": exc.message,
                 **llmops_fields,
+                **live_fields,
             },
         )
 
@@ -204,6 +244,7 @@ async def health() -> HealthResponse | JSONResponse:
         mock_fallback_allowed=settings.mock_fallback_allowed,
         cache_enabled=settings.cache_enabled,
         **llmops_status_fields(),
+        **live_status_fields_from_settings(settings),
     )
 
 
@@ -312,7 +353,179 @@ async def metrics_summary() -> MetricsSummaryResponse:
     # Auth and rate limiting are deferred to Block 14/15.
     snapshot = await metrics.summary()
     snapshot.update(llmops_status_fields())
+    try:
+        settings = get_settings()
+        snapshot.update(live_status_fields_from_settings(settings))
+    except ConfigurationError:
+        snapshot.update(live_status_fields_from_env())
     return MetricsSummaryResponse(**snapshot)
+
+
+@app.get("/v1/live/config", response_model=GeminiLiveConfigResponse)
+async def live_config() -> GeminiLiveConfigResponse | JSONResponse:
+    try:
+        settings = get_settings()
+    except ConfigurationError as exc:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": "invalid_configuration",
+                "message": exc.message,
+                **live_status_fields_from_env(),
+            },
+        )
+    return build_live_config(settings)
+
+
+@app.post("/v1/live/token", response_model=GeminiLiveTokenResponse)
+async def live_token(
+    request: GeminiLiveTokenRequest | None = Body(default=None),
+    x_snapinsight_live_access_code: str | None = Header(default=None),
+) -> GeminiLiveTokenResponse | JSONResponse:
+    start_time = time.monotonic()
+    await metrics.increment("live_token_requests")
+
+    try:
+        settings = get_settings()
+    except ConfigurationError as exc:
+        await metrics.increment("live_token_errors")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": "invalid_configuration",
+                "message": exc.message,
+                **live_status_fields_from_env(),
+            },
+        )
+
+    def trace_token_event(
+        *,
+        status: str,
+        status_code: int,
+        error_type: str | None = None,
+        token_created: bool = False,
+    ) -> None:
+        trace_backend_event(
+            "snapinsight.live.token",
+            {
+                "route": "/v1/live/token",
+                "operation": "create_live_token",
+                "live_enabled": settings.gemini_live_enabled,
+                "live_configured": bool(
+                    settings.gemini_live_enabled and settings.gemini_api_key
+                ),
+                "model_name": settings.gemini_live_model,
+                "audio_enabled": settings.live_audio_enabled,
+                "vision_enabled": settings.live_vision_enabled,
+                "max_session_seconds": settings.live_max_session_seconds,
+                "max_frames_per_second": settings.live_max_frames_per_second,
+                "requires_access_code": bool(settings.live_access_code),
+                "token_created": token_created,
+                "expires_in_seconds": 90 if token_created else None,
+                "status": status,
+                "status_code": status_code,
+                "error_type": error_type,
+                "latency_ms": latency_ms(start_time),
+            },
+        )
+
+    if not settings.gemini_live_enabled:
+        response = disabled_token_response(settings)
+        trace_token_event(status=response.status, status_code=403, error_type="disabled")
+        return JSONResponse(status_code=403, content=response.model_dump())
+
+    if not settings.gemini_api_key:
+        await metrics.increment("live_token_errors")
+        response = not_configured_token_response(settings)
+        trace_token_event(
+            status=response.status,
+            status_code=503,
+            error_type="not_configured",
+        )
+        return JSONResponse(status_code=503, content=response.model_dump())
+
+    provided_access_code = (
+        request.access_code if request and request.access_code is not None else None
+    ) or x_snapinsight_live_access_code
+    if not access_code_matches(settings, provided_access_code):
+        await metrics.increment("live_token_errors")
+        response = access_denied_token_response(settings)
+        trace_token_event(
+            status=response.status,
+            status_code=403,
+            error_type="access_denied",
+        )
+        return JSONResponse(status_code=403, content=response.model_dump())
+
+    reserved = await live_guardrail.reserve(
+        active_seconds=settings.live_max_session_seconds + 60
+    )
+    if not reserved:
+        await metrics.increment("live_token_errors")
+        response = rate_limited_token_response(settings)
+        trace_token_event(
+            status=response.status,
+            status_code=429,
+            error_type="rate_limited",
+        )
+        return JSONResponse(status_code=429, content=response.model_dump())
+
+    try:
+        response = await create_live_token(settings)
+        trace_token_event(
+            status=response.status,
+            status_code=200,
+            token_created=True,
+        )
+        return response
+    except GeminiLiveTokenError as exc:
+        await metrics.increment("live_token_errors")
+        response = token_error_response(settings)
+        trace_token_event(
+            status=response.status,
+            status_code=503,
+            error_type=exc.error_type,
+        )
+        return JSONResponse(status_code=503, content=response.model_dump())
+
+
+@app.post("/v1/live/telemetry", response_model=GeminiLiveTelemetryResponse)
+async def live_telemetry(
+    request: GeminiLiveTelemetryRequest,
+) -> GeminiLiveTelemetryResponse:
+    request_id = str(uuid.uuid4())
+    await metrics.increment("live_telemetry_events")
+
+    try:
+        settings = get_settings()
+        live_enabled = settings.gemini_live_enabled
+        live_configured = bool(settings.gemini_live_enabled and settings.gemini_api_key)
+        model_name = request.model or settings.gemini_live_model
+    except ConfigurationError:
+        live_enabled = live_status_fields_from_env()["gemini_live_enabled"]
+        live_configured = live_status_fields_from_env()["gemini_live_configured"]
+        model_name = request.model or str(live_status_fields_from_env()["gemini_live_model"])
+
+    trace_backend_event(
+        "snapinsight.live.telemetry",
+        {
+            "route": "/v1/live/telemetry",
+            "operation": "live_client_telemetry",
+            "live_event": request.event,
+            "live_enabled": live_enabled,
+            "live_configured": live_configured,
+            "model_name": model_name,
+            "duration_seconds": request.duration_seconds,
+            "frames_sent_count": request.frames_sent_count,
+            "audio_enabled": request.audio_enabled,
+            "vision_enabled": request.vision_enabled,
+            "text_messages_count": request.text_messages_count,
+            "status": request.status,
+            "error_type": request.error_type,
+            "status_code": 202,
+        },
+    )
+    return GeminiLiveTelemetryResponse(status="accepted", request_id=request_id)
 
 
 @app.post("/v1/analyze/image", response_model=AnalyzeImageResponse)

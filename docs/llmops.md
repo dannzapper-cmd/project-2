@@ -43,6 +43,11 @@ The backend emits small Langfuse traces/events for:
   - graph backend selected: Neo4j, in-memory, or Neo4j fallback
   - node, edge, and evidence-path counts
   - total latency and high-level error status
+- Gemini Live backend events
+  - token creation status, model, configured/enabled flags, session limits, and
+    high-level error type
+  - client lifecycle telemetry: started, connected, ended, error, duration,
+    frame count, text-message count, audio/vision flags, and status
 
 `GET /health` and `GET /v1/metrics/summary` expose only precomputed safe status:
 
@@ -64,6 +69,7 @@ Langfuse metadata must not include:
 - product compare payloads or full analysis JSON
 - secrets, API keys, authorization headers, database credentials, or PII
 - personal/private product notes
+- Gemini Live transcripts, raw speech/text, ephemeral token values, or access codes
 
 The backend wrapper applies an allowlist to metadata before enqueueing any
 Langfuse event so accidental unsupported fields are dropped.

@@ -16,6 +16,7 @@ import { ProductChatPanel } from "@/components/snapinsight/product-chat-panel"
 import { ProductComparePanel } from "@/components/snapinsight/product-compare-panel"
 import { ProductSessionPanel } from "@/components/snapinsight/product-session-panel"
 import { StatusMetricsPanel } from "@/components/snapinsight/status-metrics-panel"
+import { GeminiLivePanel } from "@/components/snapinsight/gemini-live-panel"
 import {
   addSnapshotToSession,
   createProductSession,
@@ -521,6 +522,8 @@ export function ImageInputPanel({ className }: ImageInputPanelProps) {
         onEndSession={handleEndSession}
         sessionLimitReached={sessionLimitReached}
       />
+
+      <GeminiLivePanel />
 
       <StatusMetricsPanel latestResult={analysisResult} className="mt-4" />
 

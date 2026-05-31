@@ -56,6 +56,14 @@ Required backend environment variables:
 | `LANGFUSE_SECRET_KEY` | Required when LLMOps tracing is enabled. Keep server-side only. |
 | `LANGFUSE_BASE_URL` | Required when LLMOps tracing is enabled. |
 | `LANGFUSE_TRACING_ENVIRONMENT` | Optional safe environment label for traces/health/metrics. |
+| `SNAPINSIGHT_GEMINI_LIVE_ENABLED` | Defaults to `false`; set `true` only when activating Gemini Live. |
+| `SNAPINSIGHT_GEMINI_LIVE_MODEL` | Optional; defaults to `gemini-3.1-flash-live-preview`. |
+| `SNAPINSIGHT_LIVE_ACCESS_CODE` | Optional but strongly recommended/expected before Live activation. Keep server-side only. |
+| `SNAPINSIGHT_LIVE_MAX_SESSION_SECONDS` | Defaults to `120`. |
+| `SNAPINSIGHT_LIVE_MAX_FRAMES_PER_SECOND` | Defaults to `1`. |
+| `SNAPINSIGHT_LIVE_AUDIO_ENABLED` | Defaults to `true`. |
+| `SNAPINSIGHT_LIVE_VISION_ENABLED` | Defaults to `true`. |
+| `SNAPINSIGHT_LIVE_SYSTEM_INSTRUCTION` | Optional server-side system instruction locked into ephemeral token constraints. |
 | `PORT` | Usually injected by the backend host. |
 
 CORS behavior: when `SNAPINSIGHT_ALLOWED_ORIGINS` is not set, the backend allows
@@ -108,6 +116,26 @@ manually with the checklist in `docs/smoke-test.md`.
   aggregate metadata only. Health and metrics do not call Langfuse live, and
   Langfuse outages must never fail Render health checks. See
   [`llmops.md`](./llmops.md).
+- Gemini Live status is exposed as safe booleans/model metadata only. Health and
+  metrics do not call Google live. See [`gemini-live.md`](./gemini-live.md).
+
+## Gemini Live activation
+
+Gemini Live is disabled by default even though the code path is implemented.
+Activation after Block 20:
+
+1. Set `SNAPINSIGHT_GEMINI_LIVE_ENABLED=true` in Render.
+2. Ensure `GEMINI_API_KEY` is present in Render.
+3. Set `SNAPINSIGHT_LIVE_ACCESS_CODE` in Render.
+4. Redeploy Render.
+5. Redeploy Vercel only if frontend public env changed.
+6. Do not add `GEMINI_API_KEY` or access codes to Vercel `NEXT_PUBLIC_*` env vars.
+7. Open the app, start Live from the Scan screen, and confirm safe Langfuse
+   telemetry.
+
+The process-local Live token guardrail is effective for a single Render process.
+Multi-instance deployments would need a shared limiter; no DB or Redis is added
+for Block 18E.
 
 ## Known limitations
 
