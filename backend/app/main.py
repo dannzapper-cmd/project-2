@@ -14,6 +14,7 @@ from app.schemas import (
     CompareProductsRequest,
     CompareProductsResponse,
     HealthResponse,
+    MetricsSummaryResponse,
     ProductChatRequest,
     ProductChatResponse,
 )
@@ -21,6 +22,7 @@ from app.services.analysis_router import (
     AnalysisUnavailableError,
     analyze_product_image,
 )
+from app.services.metrics import metrics
 from app.services.product_chat import ProductChatError, answer_product_question
 from app.services.product_compare import ProductCompareError, compare_products
 
@@ -28,8 +30,8 @@ from app.services.product_compare import ProductCompareError, compare_products
 SERVICE_NAME = "snapinsight-backend"
 APP_VERSION = "0.1.0"
 API_VERSION = "v1"
-MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024
-MAX_FILE_SIZE_MB = MAX_FILE_SIZE_BYTES // (1024 * 1024)
+# User-friendly message kept stable for both 413 oversized uploads and the UI.
+OVERSIZED_IMAGE_MESSAGE = "Image is too large. Please upload a smaller image."
 DEFAULT_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
@@ -171,7 +173,19 @@ async def health() -> HealthResponse | JSONResponse:
         analysis_mode=analysis_mode,
         gemini_configured=bool(settings.gemini_api_key),
         mock_fallback_allowed=settings.mock_fallback_allowed,
+        cache_enabled=settings.cache_enabled,
     )
+
+
+@app.get("/v1/metrics/summary", response_model=MetricsSummaryResponse)
+async def metrics_summary() -> MetricsSummaryResponse:
+    # SECURITY NOTE: This endpoint is intentionally unauthenticated
+    # for demo and operational visibility purposes.
+    # In a production deployment with real users, this endpoint
+    # should be protected or rate-limited.
+    # Auth and rate limiting are deferred to Block 14/15.
+    snapshot = await metrics.summary()
+    return MetricsSummaryResponse(**snapshot)
 
 
 @app.post("/v1/analyze/image", response_model=AnalyzeImageResponse)
@@ -208,13 +222,16 @@ async def analyze_image(
         await file.close()
 
     file_size_bytes = len(contents)
-    if file_size_bytes > MAX_FILE_SIZE_BYTES:
+    max_image_bytes = settings.max_image_mb * 1024 * 1024
+    if file_size_bytes > max_image_bytes:
+        # Privacy: reject oversized uploads before any analysis or caching so
+        # large image bytes are never hashed, processed, or retained.
         raise HTTPException(
             status_code=413,
-            detail=f"File too large. Maximum supported size is {MAX_FILE_SIZE_MB}MB.",
+            detail=OVERSIZED_IMAGE_MESSAGE,
         )
 
-    # Privacy: image bytes are not logged or persisted.
+    # Privacy: image bytes are hashed for cache keys but never logged or persisted.
     logger.info(
         "Image analysis request accepted",
         extra={
@@ -249,6 +266,8 @@ async def chat_product(
 ) -> ProductChatResponse | JSONResponse:
     start_time = time.monotonic()
     request_id = str(uuid.uuid4())
+    # Operational counter only: no chat message content is recorded.
+    await metrics.increment("chat_requests")
 
     try:
         settings = get_settings()
@@ -286,6 +305,8 @@ async def compare_product_results(
 ) -> CompareProductsResponse | JSONResponse:
     start_time = time.monotonic()
     request_id = str(uuid.uuid4())
+    # Operational counter only: no compared product data is recorded.
+    await metrics.increment("compare_requests")
 
     if not payload or not payload.get("product_a") or not payload.get("product_b"):
         return build_compare_error_response(

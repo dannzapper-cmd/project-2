@@ -12,6 +12,7 @@ class HealthResponse(BaseModel):
     analysis_mode: str
     gemini_configured: bool
     mock_fallback_allowed: bool
+    cache_enabled: bool = True
 
 
 class Confidence(BaseModel):
@@ -125,6 +126,20 @@ class AnalyzeImageResponse(BaseModel):
     retrieved_at: datetime | None = None
     source_trace: list[str] = Field(default_factory=list)
     product_enrichment: ProductEnrichment | None = None
+    # Optional cache marker. None = caching disabled / not applicable,
+    # False = cache miss (analysis was run), True = served from in-memory cache.
+    # Frontend treats None and False the same for display.
+    cache_hit: bool | None = None
+
+
+class MetricsSummaryResponse(BaseModel):
+    # Operational counters only. No user data, image data, prompts, chat
+    # messages, or product names are exposed here.
+    counters: dict[str, int]
+    last_latency_ms: int | None = None
+    average_latency_ms: int | None = None
+    uptime_seconds: int
+
 
 class ChatMessage(BaseModel):
     role: Literal["user", "assistant"]
