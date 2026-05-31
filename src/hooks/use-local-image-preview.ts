@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 
 export function useLocalImagePreview() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [imageFile, setImageFile] = useState<File | null>(null)
   const [error, setError] = useState<string | null>(null)
   const objectUrlRef = useRef<string | null>(null)
 
@@ -22,12 +23,14 @@ export function useLocalImagePreview() {
       if (!file.type.startsWith("image/")) {
         setError("Please select an image file (JPEG, PNG, WebP, etc.).")
         setPreviewUrl(null)
+        setImageFile(null)
         return false
       }
 
       const url = URL.createObjectURL(file)
       objectUrlRef.current = url
       setPreviewUrl(url)
+      setImageFile(file)
       return true
     },
     [revokeCurrent]
@@ -37,9 +40,13 @@ export function useLocalImagePreview() {
     (blob: Blob) => {
       revokeCurrent()
       setError(null)
-      const url = URL.createObjectURL(blob)
+      const file = new File([blob], "snapinsight-capture.jpg", {
+        type: blob.type || "image/jpeg",
+      })
+      const url = URL.createObjectURL(file)
       objectUrlRef.current = url
       setPreviewUrl(url)
+      setImageFile(file)
     },
     [revokeCurrent]
   )
@@ -47,6 +54,7 @@ export function useLocalImagePreview() {
   const clear = useCallback(() => {
     revokeCurrent()
     setPreviewUrl(null)
+    setImageFile(null)
     setError(null)
   }, [revokeCurrent])
 
@@ -58,8 +66,9 @@ export function useLocalImagePreview() {
 
   return {
     previewUrl,
+    imageFile,
     error,
-    hasImage: previewUrl !== null,
+    hasImage: previewUrl !== null && imageFile !== null,
     setFromFile,
     setFromBlob,
     clear,

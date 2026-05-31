@@ -1,11 +1,15 @@
 "use client"
 
-import { useCallback, useId, useRef } from "react"
+import { useCallback, useEffect, useId, useRef, useState } from "react"
 import { Images, Zap } from "lucide-react"
-import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { useCameraSnapshot } from "@/hooks/use-camera-snapshot"
 import { useLocalImagePreview } from "@/hooks/use-local-image-preview"
+import {
+  analyzeImage,
+  type AnalysisResponse,
+} from "@/lib/snapinsight-api"
+import { MockAnalysisResultCard } from "@/components/snapinsight/mock-analysis-result-card"
 
 function getStatusLabel(
   hasImage: boolean,
@@ -24,11 +28,36 @@ interface ImageInputPanelProps {
   className?: string
 }
 
+const ANALYSIS_PRIVACY_COPY =
+  "Image is sent to the local analysis service for processing. The service does not store your image. No AI model is called yet."
+
+function isAbortError(err: unknown): boolean {
+  return err instanceof Error && err.name === "AbortError"
+}
+
+function getAnalysisErrorMessage(err: unknown): string {
+  if (err instanceof TypeError) {
+    return "Analysis service unavailable. Start the backend or check the API URL."
+  }
+
+  if (err instanceof Error) {
+    return err.message
+  }
+
+  return "Analysis service unavailable. Check the backend and try again."
+}
+
 export function ImageInputPanel({ className }: ImageInputPanelProps) {
   const fileInputId = useId()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const abortControllerRef = useRef<AbortController | null>(null)
+  const [analysisResult, setAnalysisResult] =
+    useState<AnalysisResponse | null>(null)
+  const [analysisError, setAnalysisError] = useState<string | null>(null)
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
   const {
     previewUrl,
+    imageFile,
     error: uploadError,
     hasImage,
     setFromFile,
@@ -48,15 +77,34 @@ export function ImageInputPanel({ className }: ImageInputPanelProps) {
   const statusLabel = getStatusLabel(hasImage, cameraStatus)
   const showMockOverlay = !hasImage && !isCameraActive
 
+  const abortActiveAnalysis = useCallback(() => {
+    abortControllerRef.current?.abort()
+    abortControllerRef.current = null
+    setIsAnalyzing(false)
+  }, [])
+
+  const resetAnalysisState = useCallback(() => {
+    abortActiveAnalysis()
+    setAnalysisResult(null)
+    setAnalysisError(null)
+  }, [abortActiveAnalysis])
+
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort()
+    }
+  }, [])
+
   const handleFileChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0]
       if (!file) return
+      resetAnalysisState()
       stopCamera()
       setFromFile(file)
       event.target.value = ""
     },
-    [setFromFile, stopCamera]
+    [resetAnalysisState, setFromFile, stopCamera]
   )
 
   const handleUploadClick = useCallback(() => {
@@ -66,21 +114,24 @@ export function ImageInputPanel({ className }: ImageInputPanelProps) {
   const handleCapture = useCallback(async () => {
     const blob = await captureSnapshot()
     if (blob) {
+      resetAnalysisState()
       setFromBlob(blob)
       return
     }
     // captureSnapshot sets cameraMessage when video is not ready yet
-  }, [captureSnapshot, setFromBlob])
+  }, [captureSnapshot, resetAnalysisState, setFromBlob])
 
   const handleClear = useCallback(() => {
+    resetAnalysisState()
     stopCamera()
     clear()
-  }, [stopCamera, clear])
+  }, [resetAnalysisState, stopCamera, clear])
 
   const handleRetake = useCallback(() => {
+    resetAnalysisState()
     clear()
     void startCamera()
-  }, [clear, startCamera])
+  }, [resetAnalysisState, clear, startCamera])
 
   const handleCenterAction = useCallback(() => {
     if (hasImage) return
@@ -90,6 +141,39 @@ export function ImageInputPanel({ className }: ImageInputPanelProps) {
     }
     void startCamera()
   }, [hasImage, isCameraActive, handleCapture, startCamera])
+
+  const handleAnalyze = useCallback(async () => {
+    if (!imageFile) {
+      setAnalysisError("Select or capture an image before analysis.")
+      return
+    }
+
+    abortActiveAnalysis()
+    const controller = new AbortController()
+    abortControllerRef.current = controller
+    setIsAnalyzing(true)
+    setAnalysisError(null)
+    setAnalysisResult(null)
+
+    try {
+      const result = await analyzeImage(imageFile, controller.signal)
+      if (controller.signal.aborted) return
+      setAnalysisResult(result)
+    } catch (err) {
+      if (isAbortError(err)) {
+        return
+      }
+      if (controller.signal.aborted) {
+        return
+      }
+      setAnalysisError(getAnalysisErrorMessage(err))
+    } finally {
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null
+        setIsAnalyzing(false)
+      }
+    }
+  }, [abortActiveAnalysis, imageFile])
 
   return (
     <div className={cn("flex flex-col", className)}>
@@ -180,12 +264,18 @@ export function ImageInputPanel({ className }: ImageInputPanelProps) {
           >
             Retake
           </button>
-          <Link
-            href="/result"
-            className="touch-target rounded-full border border-violet-500/30 bg-violet-500/15 px-4 py-2 text-sm font-medium text-violet-300 hover:bg-violet-500/25"
+          <button
+            type="button"
+            onClick={handleAnalyze}
+            disabled={isAnalyzing || !imageFile}
+            className={cn(
+              "touch-target rounded-full border border-violet-500/30 bg-violet-500/15 px-4 py-2 text-sm font-medium text-violet-300 hover:bg-violet-500/25",
+              (isAnalyzing || !imageFile) &&
+                "cursor-not-allowed opacity-60 hover:bg-violet-500/15"
+            )}
           >
-            Sample result (mock)
-          </Link>
+            {isAnalyzing ? "Analyzing..." : "Analyze image"}
+          </button>
         </div>
       )}
 
@@ -241,8 +331,19 @@ export function ImageInputPanel({ className }: ImageInputPanelProps) {
       )}
 
       <p className="text-center text-xs text-muted-foreground">
-        Images stay local in this step. No upload or analysis yet.
+        {ANALYSIS_PRIVACY_COPY}
       </p>
+
+      {analysisError && (
+        <p
+          className="mt-3 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-center text-sm text-red-300"
+          role="alert"
+        >
+          {analysisError}
+        </p>
+      )}
+
+      {analysisResult && <MockAnalysisResultCard result={analysisResult} />}
     </div>
   )
 }

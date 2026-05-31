@@ -37,6 +37,7 @@ Delivery is organized into **blocks**. Block count is not rigid: blocks may be c
 - Backend project structure, health check, OpenAPI spec.
 - Stub analysis endpoint returning mock structured JSON.
 - **Block 3A status:** Backend contract/mock image analysis API added; no AI, storage, RAG, frontend integration, or deploy.
+- **Block 3B status:** Existing scan UI posts selected/captured images to the mock backend and displays the no-AI response inline.
 
 ## Block 4 — Real multimodal AI
 
