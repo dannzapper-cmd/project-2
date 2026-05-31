@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useState } from "react"
 import { AlertTriangle, Database, GitCompareArrows, X } from "lucide-react"
 
 import {
@@ -125,31 +125,38 @@ export function ProductComparePanel({
   onReplaceB,
   onKeepBoth,
 }: ProductComparePanelProps) {
-  const [comparison, setComparison] = useState<CompareProductsResponse | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [comparisonState, setComparisonState] = useState<{
+    slotKey: string
+    response: CompareProductsResponse
+  } | null>(null)
+  const [errorState, setErrorState] = useState<{
+    slotKey: string
+    message: string
+  } | null>(null)
   const [isComparing, setIsComparing] = useState(false)
-
-  useEffect(() => {
-    setComparison(null)
-    setError(null)
-  }, [productA?.request_id, productB?.request_id])
+  const slotKey = `${productA?.request_id ?? "empty"}:${productB?.request_id ?? "empty"}`
+  const comparison =
+    comparisonState?.slotKey === slotKey ? comparisonState.response : null
+  const error = errorState?.slotKey === slotKey ? errorState.message : null
 
   const runCompare = useCallback(async () => {
     if (!productA || !productB || isComparing) return
     setIsComparing(true)
-    setError(null)
+    setErrorState(null)
 
     try {
       const result = await compareProducts(productA, productB)
-      setComparison(result)
+      setComparisonState({ slotKey, response: result })
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Compare is unavailable right now."
-      )
+      setErrorState({
+        slotKey,
+        message:
+          err instanceof Error ? err.message : "Compare is unavailable right now.",
+      })
     } finally {
       setIsComparing(false)
     }
-  }, [isComparing, productA, productB])
+  }, [isComparing, productA, productB, slotKey])
 
   const canCompare = Boolean(productA && productB)
   const sourceLimited = hasLimitedSource(productA) || hasLimitedSource(productB)
