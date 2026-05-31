@@ -33,7 +33,12 @@ from schemas import (  # noqa: E402
     render_output_json,
     validate_output,
 )
-from validate_dataset import validate_dataset, validate_record  # noqa: E402
+from validate_dataset import (  # noqa: E402
+    deterministic_split,
+    load_jsonl,
+    validate_dataset,
+    validate_record,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -301,3 +306,96 @@ def test_train_config_validation_catches_bad_values():
     config = train_lora.config_from_args(args)
     problems = train_lora.validate_config(config)
     assert any("epochs" in p for p in problems)
+
+
+def test_train_split_train_selects_fewer_than_all():
+    full = train_lora.build_examples(str(DATA_PATH), split="all")
+    train = train_lora.build_examples(str(DATA_PATH), split="train")
+    eval_ex = train_lora.build_examples(str(DATA_PATH), split="eval")
+    assert len(train) < len(full)
+    assert len(train) + len(eval_ex) == len(full)
+    assert len(eval_ex) > 0
+
+
+# ---------------------------------------------------------------------------
+# Reproducible train/eval split
+# ---------------------------------------------------------------------------
+
+
+def test_deterministic_split_all_returns_everything():
+    records = load_jsonl(str(DATA_PATH))
+    assert len(deterministic_split(records, split="all")) == len(records)
+
+
+def test_deterministic_split_disjoint_and_covers_all():
+    records = load_jsonl(str(DATA_PATH))
+    train = deterministic_split(records, split="train")
+    holdout = deterministic_split(records, split="eval")
+    train_ids = {r["id"] for r in train}
+    eval_ids = {r["id"] for r in holdout}
+    assert train_ids.isdisjoint(eval_ids)
+    assert train_ids | eval_ids == {r["id"] for r in records}
+    assert len(holdout) > 0 and len(train) > 0
+
+
+def test_deterministic_split_is_reproducible():
+    records = load_jsonl(str(DATA_PATH))
+    first = [r["id"] for r in deterministic_split(records, split="eval")]
+    second = [r["id"] for r in deterministic_split(records, split="eval")]
+    assert first == second
+
+
+def test_deterministic_split_holdout_spans_difficulties():
+    records = load_jsonl(str(DATA_PATH))
+    holdout = deterministic_split(records, split="eval")
+    buckets = {r.get("difficulty") for r in holdout}
+    # The held-out set should not be trivially one difficulty bucket.
+    assert len(buckets) >= 3
+
+
+def test_deterministic_split_respects_pinned_field():
+    records = [
+        {"id": "p1", "split": "eval", "input": {}, "output": {}},
+        {"id": "p2", "split": "train", "input": {}, "output": {}},
+    ]
+    eval_ids = {r["id"] for r in deterministic_split(records, split="eval")}
+    train_ids = {r["id"] for r in deterministic_split(records, split="train")}
+    assert eval_ids == {"p1"}
+    assert train_ids == {"p2"}
+
+
+def test_deterministic_split_rejects_bad_split():
+    with pytest.raises(ValueError):
+        deterministic_split([], split="nonsense")
+
+
+# ---------------------------------------------------------------------------
+# Report provenance + honesty disclaimers
+# ---------------------------------------------------------------------------
+
+
+def test_mock_report_flags_itself_as_evaluator_validation():
+    references = ev.references_from_dataset(str(DATA_PATH))
+    tuned = ev.compute_metrics(
+        "tuned", references, [ev.mock_tuned_prediction(r) for r in references]
+    )
+    report = ev.build_report(str(DATA_PATH), "mock", {"tuned": tuned}, split="all", is_mock=True)
+    assert "validates the evaluator" in report
+    assert "Run metadata" in report
+    assert "Generated at" in report
+
+
+def test_report_split_all_warns_in_sample():
+    references = ev.references_from_dataset(str(DATA_PATH))
+    tuned = ev.compute_metrics(
+        "tuned", references, [ev.mock_tuned_prediction(r) for r in references]
+    )
+    report = ev.build_report(str(DATA_PATH), "m", {"tuned": tuned}, split="all")
+    assert "in-sample" in report
+
+
+def test_eval_on_holdout_split_runs():
+    refs = ev.references_from_dataset(str(DATA_PATH), split="eval")
+    assert 0 < len(refs) < 45
+    metrics = ev.compute_metrics("eval", refs, [ev.mock_tuned_prediction(r) for r in refs])
+    assert metrics.n == len(refs)

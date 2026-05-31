@@ -45,14 +45,32 @@ yarn-error.log*
 # tuning pipeline (Block 18C) — never commit model artifacts or generated outputs
 /tuning/outputs/
 tuning/outputs/
+# model weights / adapters / checkpoints (any location)
 **/*.safetensors
 **/*.bin
 **/*.pt
+**/*.pth
 **/*.ckpt
+**/*.gguf
+**/*.onnx
+**/*.h5
+**/*.npz
 **/adapter_model.*
 **/adapter_config.json
-tuning/reports/eval_report.md
+**/*.lora
+# generated real eval reports (templates are committed, real runs are not)
+tuning/reports/eval_report*.md
+tuning/reports/*_eval_report.md
+!tuning/reports/example_eval_report.md
+# experiment trackers / run logs (in case a trainer enables them)
+wandb/
+mlruns/
+runs/
+lightning_logs/
+.neptune/
+# python caches / notebook checkpoints
 .pytest_cache/
+.ipynb_checkpoints/
 __pycache__/
 *.py[cod]
 

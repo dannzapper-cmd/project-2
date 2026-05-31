@@ -23,6 +23,7 @@ Exit code is 0 when the dataset is valid, 1 otherwise.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from collections import Counter
@@ -41,8 +42,11 @@ from schemas import (  # noqa: E402
     validate_output,
 )
 
-ALLOWED_TOP_LEVEL_KEYS = {"id", "difficulty", "input", "output", "notes"}
+ALLOWED_TOP_LEVEL_KEYS = {"id", "difficulty", "split", "input", "output", "notes"}
 KNOWN_INPUT_KEYS = set(INPUT_FIELDS)
+
+SPLIT_CHOICES = ("all", "train", "eval")
+DEFAULT_HOLDOUT_FRAC = 0.2
 
 
 @dataclass
@@ -58,6 +62,8 @@ class DatasetReport:
     caution_counts: Counter = field(default_factory=Counter)
     category_counts: Counter = field(default_factory=Counter)
     medical_claim_flag_count: int = 0
+    train_count: int = 0
+    eval_count: int = 0
 
     @property
     def ok(self) -> bool:
@@ -81,6 +87,56 @@ def load_jsonl(path: str | Path) -> list[dict[str, Any]]:
             raise ValueError(f"line {lineno}: record is not a JSON object")
         records.append(obj)
     return records
+
+
+def _record_key(record: dict[str, Any], index: int) -> str:
+    """Stable key for splitting: prefer the record id, fall back to its index."""
+
+    rid = record.get("id")
+    return str(rid) if isinstance(rid, str) and rid else f"__index_{index}"
+
+
+def deterministic_split(
+    records: list[dict[str, Any]],
+    *,
+    split: str = "all",
+    holdout_frac: float = DEFAULT_HOLDOUT_FRAC,
+    seed: int = 42,
+) -> list[dict[str, Any]]:
+    """Return a reproducible train/eval subset of ``records``.
+
+    The split is content-addressed: each record is assigned to the eval holdout
+    iff a stable hash of ``seed`` + its id (or index) falls below ``holdout_frac``.
+    This is deterministic across runs and machines and does not depend on order,
+    so ``--split eval`` always yields the same held-out set.
+
+    ``split="all"`` (the default) returns every record unchanged, which keeps the
+    default behavior of the scripts and tests stable. Use ``split="train"`` for
+    training and ``split="eval"`` for an honest held-out evaluation.
+
+    A record may also pin itself with an explicit ``"split": "train"|"eval"``
+    field, which overrides the hash assignment.
+    """
+
+    if split not in SPLIT_CHOICES:
+        raise ValueError(f"split must be one of {SPLIT_CHOICES}, got {split!r}")
+    if split == "all":
+        return list(records)
+    if not 0.0 < holdout_frac < 1.0:
+        raise ValueError("holdout_frac must be between 0 and 1 (exclusive)")
+
+    selected: list[dict[str, Any]] = []
+    for index, record in enumerate(records):
+        pinned = record.get("split")
+        if pinned in ("train", "eval"):
+            assigned = pinned
+        else:
+            digest = hashlib.md5(f"{seed}:{_record_key(record, index)}".encode()).hexdigest()
+            fraction = int(digest[:8], 16) / 0xFFFFFFFF
+            assigned = "eval" if fraction < holdout_frac else "train"
+        if assigned == split:
+            selected.append(record)
+    return selected
 
 
 def validate_record(record: dict[str, Any], *, ref: str) -> tuple[list[str], list[str]]:
@@ -166,6 +222,10 @@ def validate_dataset(path: str | Path) -> DatasetReport:
             if output.get("medical_claim_detected") is True:
                 report.medical_claim_flag_count += 1
 
+    # Report the default reproducible holdout sizes so the split is visible.
+    report.train_count = len(deterministic_split(records, split="train"))
+    report.eval_count = len(deterministic_split(records, split="eval"))
+
     return report
 
 
@@ -185,6 +245,10 @@ def print_report(report: DatasetReport) -> None:
                 print(f"  - {key}: {report.caution_counts[key]}")
     print(f"Records flagging a source medical/health claim: {report.medical_claim_flag_count}")
     print(f"Unique normalized categories: {len(report.category_counts)}")
+    print(
+        "Reproducible holdout (default frac=%.0f%%, seed=42): train=%d, eval=%d"
+        % (DEFAULT_HOLDOUT_FRAC * 100, report.train_count, report.eval_count)
+    )
 
     if report.warnings:
         print(f"\nWarnings ({len(report.warnings)}):")

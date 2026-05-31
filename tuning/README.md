@@ -21,8 +21,9 @@ SnapInsight.
 
 - Defines a single canonical output schema (`src/schemas.py`) used everywhere.
 - Ships a small, credible seed dataset (`data/product_intelligence_seed.jsonl`,
-  45 examples) of **fictional/generic** CPG/food products with easy, ambiguous,
-  missing-data, and "do-not-overclaim" cases.
+  v0.1.0, 45 examples; see [`data/DATASET_CARD.md`](./data/DATASET_CARD.md)) of
+  **fictional/generic** CPG/food products with easy, ambiguous, missing-data, and
+  "do-not-overclaim" cases.
 - Validates the dataset on CPU in well under 10 seconds (`src/validate_dataset.py`).
 - Trains a real LoRA adapter on a small open model (`src/train_lora.py`),
   supporting both encoder-decoder (flan-t5) and decoder-only (Qwen) models.
@@ -78,7 +79,8 @@ tuning/
 ├── COLAB.md                          # step-by-step Colab GPU guide
 ├── requirements.txt                  # isolated tuning deps (not app deps)
 ├── data/
-│   └── product_intelligence_seed.jsonl
+│   ├── product_intelligence_seed.jsonl
+│   └── DATASET_CARD.md               # version, provenance, composition, limits
 ├── src/
 │   ├── schemas.py                    # canonical schema + prompt builder
 │   ├── validate_dataset.py           # CPU dataset validation
@@ -109,6 +111,12 @@ auto-detects encoder-decoder vs causal architecture.
 
 ## How to run
 
+The pipeline has three distinct phases, intentionally kept separate:
+
+1. **Smoke test** (CPU, no model, no GPU) — validate data + config + metric logic.
+2. **Actual training** (GPU) — produce a LoRA adapter under `tuning/outputs/`.
+3. **Actual evaluation** (GPU) — score the trained adapter and write a report.
+
 ### 1. Validate the dataset (CPU, no model download, < 10s)
 
 ```bash
@@ -134,24 +142,48 @@ Install deps first (ideally in a fresh venv or on Colab/Kaggle/RunPod):
 ```bash
 pip install -r tuning/requirements.txt
 
+# Train on the held-out TRAIN split so eval is honest (recommended):
 python3 tuning/src/train_lora.py \
     --model google/flan-t5-small \
     --data tuning/data/product_intelligence_seed.jsonl \
+    --split train \
     --output tuning/outputs/
 ```
+
+On a free Colab **T4 GPU**, `flan-t5-small` LoRA on this ~45-example dataset is a
+matter of minutes (small model, tiny dataset, a handful of epochs). `flan-t5-base`
+and `Qwen2.5-0.5B` take longer but remain T4-feasible.
+
+**Artifacts produced** (under `tuning/outputs/`, all gitignored — do NOT commit):
+
+- `adapter_model.safetensors` + `adapter_config.json` — the LoRA adapter.
+- tokenizer files (`tokenizer*.json`, `special_tokens_map.json`, etc.).
+- `train_config.json` — the exact run config (model, split, hyperparameters).
+
+No base-model weights are committed; the adapter references the base model by id.
 
 ### 5. Evaluate baseline vs tuned
 
 ```bash
-# No-model mock eval (CPU) — exercises the metric logic:
+# 5a. No-model mock eval (CPU) — validates the EVALUATOR, not model quality:
 python3 tuning/src/evaluate.py --mock --data tuning/data/product_intelligence_seed.jsonl
 
-# Real-model eval (GPU recommended) — writes a Markdown report:
+# 5b. Real-model eval on the HELD-OUT eval split (GPU) — writes a Markdown report:
 python3 tuning/src/evaluate.py \
     --model tuning/outputs/ \
     --data tuning/data/product_intelligence_seed.jsonl \
+    --split eval \
     --report tuning/reports/eval_report.md
 ```
+
+> **In-sample vs held-out:** `--split all` (the default) evaluates on the same
+> records used for training and therefore measures schema adherence / consistency,
+> not generalization. Use `--split train` for training and `--split eval` for an
+> honest held-out signal. The split is reproducible (content hash, seed 42,
+> default 20% holdout → train=37 / eval=8 for v0.1.0).
+>
+> The `--mock` run loads no model; it only proves the metric logic separates good
+> from bad structured output. It is **not** a claim about any trained model.
 
 ### 6. Export to Vertex AI SFT JSONL (optional, no Google API)
 

@@ -6,17 +6,37 @@ This is an **illustrative template** showing the shape of the report produced by
 targets for a small LoRA run on `google/flan-t5-small` with the seed dataset.
 Real numbers depend on the base model, hyperparameters, and run-to-run variance.
 
-A real report is generated with:
+**No real training run has been performed in this repository.** No tuned adapter
+is committed, so no real metrics exist yet — the tables below are illustrative
+targets and a CPU mock-logic reference, not measured model results.
+
+A real report is generated, after training, with:
 
 ```bash
+# Honest held-out evaluation (train on --split train, evaluate on --split eval):
 python3 tuning/src/evaluate.py \
     --model tuning/outputs/ \
     --data tuning/data/product_intelligence_seed.jsonl \
+    --split eval \
     --report tuning/reports/eval_report.md
 ```
 
 `tuning/reports/eval_report.md` (the real output) is gitignored. Only this
 example template is committed.
+
+## Recommended provenance fields for a real eval report
+
+A credible real report should record enough to reproduce it. `evaluate.py`
+auto-emits a "Run metadata" header (generated-at timestamp, dataset, eval split,
+model label). When you publish results, also capture:
+
+- **Model name / adapter path** and **base model** (e.g. `google/flan-t5-small`).
+- **Dataset name + version** (see `tuning/data/DATASET_CARD.md`).
+- **Train/eval split** used (e.g. `--split train` / `--split eval`, holdout frac, seed).
+- **Hardware** (e.g. Colab T4) and **approximate runtime**.
+- **Hyperparameters** (epochs, LR, LoRA r/alpha) — saved to
+  `tuning/outputs/train_config.json` by `train_lora.py`.
+- **Metrics** (the table below) and **known failure cases / qualitative notes**.
 
 ---
 
@@ -50,12 +70,13 @@ example template is committed.
 > tuned model's `safe_summary` outputs. A tuned model that scores well but emits
 > medical claims is a FAILED run for this task.
 
-## CPU mock reference (no model)
+## CPU mock reference (no model) — validates the evaluator, not the model
 
 Running `evaluate.py --mock` (used by smoke tests and CI) does not load a model.
-It scores deterministic "baseline" vs "tuned" mock predictions purely to exercise
-the metric logic. A representative mock run on the 45-example seed dataset shows
-the eval logic cleanly separating the two:
+**It validates the evaluator, not actual model performance.** It scores
+deterministic "baseline" vs "tuned" mock predictions purely to exercise the
+metric logic. A representative mock run on the 45-example seed dataset shows the
+eval logic cleanly separating the two:
 
 | Metric | baseline (mock) | tuned (mock) |
 |---|---|---|

@@ -38,7 +38,13 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from schemas import build_prompt, render_output_json  # noqa: E402
-from validate_dataset import load_jsonl, validate_dataset  # noqa: E402
+from validate_dataset import (  # noqa: E402
+    DEFAULT_HOLDOUT_FRAC,
+    SPLIT_CHOICES,
+    deterministic_split,
+    load_jsonl,
+    validate_dataset,
+)
 
 DEFAULT_MODEL = os.environ.get("SNAPINSIGHT_TUNE_MODEL", "google/flan-t5-small")
 DEFAULT_DATA = str(
@@ -66,6 +72,8 @@ class TrainConfig:
     model: str
     data: str
     output: str
+    split: str
+    holdout_frac: float
     epochs: int
     learning_rate: float
     batch_size: int
@@ -89,6 +97,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--model", default=DEFAULT_MODEL, help="HF model id or local path.")
     parser.add_argument("--data", default=DEFAULT_DATA, help="JSONL training dataset.")
     parser.add_argument("--output", default=DEFAULT_OUTPUT, help="Output dir for the adapter.")
+    parser.add_argument(
+        "--split",
+        choices=SPLIT_CHOICES,
+        default="all",
+        help="Which reproducible subset to train on. Use 'train' to hold out an eval set.",
+    )
+    parser.add_argument(
+        "--holdout-frac",
+        type=float,
+        default=DEFAULT_HOLDOUT_FRAC,
+        help="Fraction of records assigned to the eval holdout when --split is used.",
+    )
     parser.add_argument("--epochs", type=int, default=8)
     parser.add_argument("--learning-rate", type=float, default=2e-4)
     parser.add_argument("--batch-size", type=int, default=4)
@@ -112,6 +132,8 @@ def config_from_args(args: argparse.Namespace) -> TrainConfig:
         model=args.model,
         data=args.data,
         output=args.output,
+        split=args.split,
+        holdout_frac=args.holdout_frac,
         epochs=args.epochs,
         learning_rate=args.learning_rate,
         batch_size=args.batch_size,
@@ -125,10 +147,17 @@ def config_from_args(args: argparse.Namespace) -> TrainConfig:
     )
 
 
-def build_examples(data_path: str) -> list[dict[str, str]]:
+def build_examples(
+    data_path: str,
+    *,
+    split: str = "all",
+    holdout_frac: float = DEFAULT_HOLDOUT_FRAC,
+) -> list[dict[str, str]]:
     """Load the dataset and return prompt/target pairs using the shared schema."""
 
-    records = load_jsonl(data_path)
+    records = deterministic_split(
+        load_jsonl(data_path), split=split, holdout_frac=holdout_frac
+    )
     examples: list[dict[str, str]] = []
     for record in records:
         record_input = record.get("input") or {}
@@ -185,10 +214,11 @@ def run_smoke_test(config: TrainConfig) -> int:
             print(f"  - {err}")
         return 1
 
-    examples = build_examples(config.data)
+    examples = build_examples(config.data, split=config.split, holdout_frac=config.holdout_frac)
     if not examples:
         print("[smoke-test] FAIL: no training examples were built.")
         return 1
+    print(f"[smoke-test] Split='{config.split}' selected {len(examples)} record(s) for training.")
 
     sample = examples[0]
     print(f"[smoke-test] Built {len(examples)} prompt/target pairs.")
@@ -237,8 +267,8 @@ def run_training(config: TrainConfig) -> int:
         print("WARNING: no CUDA GPU detected. Training on CPU will be extremely slow.")
         print("Use a Colab/Kaggle/RunPod GPU runtime for real training.")
 
-    examples = build_examples(config.data)
-    print(f"Loaded {len(examples)} examples from {config.data}")
+    examples = build_examples(config.data, split=config.split, holdout_frac=config.holdout_frac)
+    print(f"Loaded {len(examples)} examples from {config.data} (split='{config.split}')")
 
     hf_config = AutoConfig.from_pretrained(config.model)
     is_encoder_decoder = bool(getattr(hf_config, "is_encoder_decoder", False))

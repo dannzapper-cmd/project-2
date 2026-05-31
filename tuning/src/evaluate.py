@@ -36,6 +36,7 @@ import argparse
 import json
 import sys
 from dataclasses import asdict, dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -49,7 +50,12 @@ from schemas import (  # noqa: E402
     render_output_json,
     validate_output,
 )
-from validate_dataset import load_jsonl  # noqa: E402
+from validate_dataset import (  # noqa: E402
+    DEFAULT_HOLDOUT_FRAC,
+    SPLIT_CHOICES,
+    deterministic_split,
+    load_jsonl,
+)
 
 DEFAULT_DATA = str(
     Path(__file__).resolve().parents[1] / "data" / "product_intelligence_seed.jsonl"
@@ -279,8 +285,12 @@ def mock_baseline_prediction(ref: dict[str, Any]) -> str:
     )
 
 
-def references_from_dataset(data_path: str) -> list[dict[str, Any]]:
-    records = load_jsonl(data_path)
+def references_from_dataset(
+    data_path: str, *, split: str = "all", holdout_frac: float = DEFAULT_HOLDOUT_FRAC
+) -> list[dict[str, Any]]:
+    records = deterministic_split(
+        load_jsonl(data_path), split=split, holdout_frac=holdout_frac
+    )
     return [canonical_output(r.get("output") or {}) for r in records]
 
 
@@ -289,7 +299,14 @@ def references_from_dataset(data_path: str) -> list[dict[str, Any]]:
 # ---------------------------------------------------------------------------
 
 
-def generate_real_predictions(model_path: str, data_path: str, max_new_tokens: int = 320) -> list[str]:
+def generate_real_predictions(
+    model_path: str,
+    data_path: str,
+    max_new_tokens: int = 320,
+    *,
+    split: str = "all",
+    holdout_frac: float = DEFAULT_HOLDOUT_FRAC,
+) -> list[str]:
     """Load a (LoRA-adapted) model and generate raw predictions for each record."""
 
     try:
@@ -324,7 +341,7 @@ def generate_real_predictions(model_path: str, data_path: str, max_new_tokens: i
         model = PeftModel.from_pretrained(model, model_path)
     model.eval()
 
-    records = load_jsonl(data_path)
+    records = deterministic_split(load_jsonl(data_path), split=split, holdout_frac=holdout_frac)
     predictions: list[str] = []
     for record in records:
         prompt = build_prompt(record.get("input") or {})
@@ -353,18 +370,42 @@ def build_report(
     data_path: str,
     model_label: str,
     metrics_by_label: dict[str, EvalMetrics],
+    *,
+    split: str = "all",
+    is_mock: bool = False,
+    generated_at: str | None = None,
 ) -> str:
     lines: list[str] = []
     lines.append("# SnapInsight 18C — Tuning Evaluation Report")
     lines.append("")
+    lines.append("## Run metadata")
+    lines.append("")
+    lines.append(f"- Generated at (UTC): {generated_at or datetime.now(timezone.utc).isoformat()}")
     lines.append(f"- Dataset: `{data_path}`")
+    lines.append(f"- Eval split: `{split}`" + ("  (in-sample — not a held-out set)" if split == "all" else "  (held-out subset)"))
     lines.append(f"- Evaluated: {model_label}")
     lines.append("")
+    if is_mock:
+        lines.append(
+            "> **MOCK RUN — this validates the evaluator, not actual model performance.** "
+            "No model was loaded. The 'baseline' and 'tuned' columns are deterministic "
+            "synthetic predictions used only to prove the metric logic separates good "
+            "from bad structured output. These numbers are NOT a claim about any trained model."
+        )
+        lines.append("")
     lines.append(
         "> This report scores structured product-intelligence outputs against the "
         "canonical schema in `tuning/src/schemas.py`. It does not measure production "
         "SnapInsight behavior and does not validate medical accuracy."
     )
+    if split == "all":
+        lines.append("")
+        lines.append(
+            "> NOTE: `--split all` evaluates on the same records used for training, so "
+            "these metrics measure schema adherence / consistency (in-sample fit), NOT "
+            "generalization. For an honest generalization signal, train with "
+            "`--split train` and evaluate with `--split eval`."
+        )
     lines.append("")
     lines.append("## Metrics")
     lines.append("")
@@ -407,8 +448,14 @@ def build_report(
     return "\n".join(lines) + "\n"
 
 
-def run_mock(data_path: str, report_path: str | None) -> int:
-    references = references_from_dataset(data_path)
+def run_mock(
+    data_path: str,
+    report_path: str | None,
+    *,
+    split: str = "all",
+    holdout_frac: float = DEFAULT_HOLDOUT_FRAC,
+) -> int:
+    references = references_from_dataset(data_path, split=split, holdout_frac=holdout_frac)
     baseline_preds = [mock_baseline_prediction(r) for r in references]
     tuned_preds = [mock_tuned_prediction(r) for r in references]
 
@@ -416,7 +463,13 @@ def run_mock(data_path: str, report_path: str | None) -> int:
     tuned = compute_metrics("tuned (mock)", references, tuned_preds)
     metrics_by_label = {"baseline (mock)": baseline, "tuned (mock)": tuned}
 
-    report = build_report(data_path, "MOCK predictions (no model loaded)", metrics_by_label)
+    report = build_report(
+        data_path,
+        "MOCK predictions (no model loaded)",
+        metrics_by_label,
+        split=split,
+        is_mock=True,
+    )
     print(report)
     if report_path:
         Path(report_path).parent.mkdir(parents=True, exist_ok=True)
@@ -425,12 +478,23 @@ def run_mock(data_path: str, report_path: str | None) -> int:
     return 0
 
 
-def run_real(model_path: str, data_path: str, report_path: str | None) -> int:
-    predictions = generate_real_predictions(model_path, data_path)
-    references = references_from_dataset(data_path)
+def run_real(
+    model_path: str,
+    data_path: str,
+    report_path: str | None,
+    *,
+    split: str = "all",
+    holdout_frac: float = DEFAULT_HOLDOUT_FRAC,
+) -> int:
+    predictions = generate_real_predictions(
+        model_path, data_path, split=split, holdout_frac=holdout_frac
+    )
+    references = references_from_dataset(data_path, split=split, holdout_frac=holdout_frac)
     metrics = compute_metrics(f"model: {model_path}", references, predictions)
     metrics_by_label = {f"tuned ({model_path})": metrics}
-    report = build_report(data_path, f"model at {model_path}", metrics_by_label)
+    report = build_report(
+        data_path, f"model at {model_path}", metrics_by_label, split=split, is_mock=False
+    )
     print(report)
     if report_path:
         Path(report_path).parent.mkdir(parents=True, exist_ok=True)
@@ -445,6 +509,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--data", default=DEFAULT_DATA, help="JSONL dataset of references.")
     parser.add_argument("--report", default=None, help="Optional path to write a Markdown report.")
     parser.add_argument(
+        "--split",
+        choices=SPLIT_CHOICES,
+        default="all",
+        help="Which reproducible subset to evaluate. Use 'eval' for a held-out set.",
+    )
+    parser.add_argument(
+        "--holdout-frac",
+        type=float,
+        default=DEFAULT_HOLDOUT_FRAC,
+        help="Fraction assigned to the eval holdout when --split is used.",
+    )
+    parser.add_argument(
         "--mock",
         action="store_true",
         help="Run eval logic against deterministic mock baseline/tuned predictions (no model).",
@@ -457,8 +533,10 @@ def main(argv: list[str] | None = None) -> int:
     if args.mock or not args.model:
         if not args.mock:
             print("No --model provided; running in --mock mode.\n")
-        return run_mock(args.data, args.report)
-    return run_real(args.model, args.data, args.report)
+        return run_mock(args.data, args.report, split=args.split, holdout_frac=args.holdout_frac)
+    return run_real(
+        args.model, args.data, args.report, split=args.split, holdout_frac=args.holdout_frac
+    )
 
 
 if __name__ == "__main__":

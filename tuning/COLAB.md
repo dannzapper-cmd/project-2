@@ -62,13 +62,22 @@ errors before training.
 !python3 tuning/src/train_lora.py \
     --model google/flan-t5-small \
     --data tuning/data/product_intelligence_seed.jsonl \
+    --split train \
     --output tuning/outputs/
 ```
 
 This downloads the small base model, attaches a LoRA adapter, trains for a few
-epochs on the seed dataset, and saves the adapter + tokenizer under
-`tuning/outputs/`. With ~45 examples on a T4 this is quick. Tune
-`--epochs`, `--learning-rate`, `--lora-r` as needed.
+epochs on the **train split** (held-out eval set kept aside), and saves the
+adapter + tokenizer under `tuning/outputs/`. With ~37 train examples on a T4 this
+takes a few minutes. Tune `--epochs`, `--learning-rate`, `--lora-r` as needed.
+
+**Artifacts produced** under `tuning/outputs/` (all gitignored): the LoRA adapter
+(`adapter_model.safetensors`, `adapter_config.json`), tokenizer files, and
+`train_config.json` recording the exact run config. Base-model weights are not
+saved — the adapter references the base model by id.
+
+> Using `--split train` here and `--split eval` at evaluation time gives an
+> honest held-out measurement. The split is reproducible (seed 42).
 
 > To try the stronger alternative, swap in `--model Qwen/Qwen2.5-0.5B`. It is a
 > decoder-only causal model (~500M params, Apache 2.0); the script detects the
@@ -80,12 +89,14 @@ epochs on the seed dataset, and saves the adapter + tokenizer under
 !python3 tuning/src/evaluate.py \
     --model tuning/outputs/ \
     --data tuning/data/product_intelligence_seed.jsonl \
+    --split eval \
     --report tuning/reports/eval_report.md
 ```
 
-This loads your adapter, generates structured predictions, scores them against
-the canonical schema, and writes a Markdown report. The most important line is
-**Medical-claim violations** — it must be **0**.
+This loads your adapter, generates structured predictions for the **held-out eval
+split**, scores them against the canonical schema, and writes a Markdown report
+with a run-metadata header. The most important line is **Medical-claim
+violations** — it must be **0**.
 
 You can also run the no-model mock eval to sanity-check the metric logic:
 
