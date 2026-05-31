@@ -1,4 +1,5 @@
 import asyncio
+import re
 from typing import Literal
 
 from google import genai
@@ -17,12 +18,99 @@ from app.schemas import (
 
 
 GEMINI_TIMEOUT_SECONDS = 30.0
+SAFE_MESSAGE_MAX_CHARS = 300
+
+_API_KEY_PATTERN = re.compile(
+    r"(?i)\b(api[_-]?key|x-goog-api-key)\b\s*[:=]\s*([^\s,;]+)"
+)
+_DATA_IMAGE_PATTERN = re.compile(
+    r"(?i)data:image/[a-z0-9.+-]+;base64,[a-z0-9+/=\s]+"
+)
+_LONG_BASE64_CHUNK_PATTERN = re.compile(r"(?<![A-Za-z0-9+/=])[A-Za-z0-9+/=]{80,}")
+_BYTES_LITERAL_PATTERN = re.compile(r"b(['\"]).*?\1", re.DOTALL)
+_SENSITIVE_FIELD_PATTERN = re.compile(
+    r"(?i)\b(prompt|payload|request_payload|contents|response_body|image_bytes)\b\s*[:=]\s*([^;,\n]+)"
+)
 
 
 class GeminiAnalysisError(Exception):
-    def __init__(self, error_class: str) -> None:
+    def __init__(
+        self,
+        error_class: str,
+        *,
+        safe_message: str | None = None,
+        status_code: int | None = None,
+        code: str | int | None = None,
+    ) -> None:
         super().__init__(error_class)
         self.error_class = error_class
+        self.safe_message = _truncate_safe_message(safe_message)
+        self.status_code = status_code
+        self.code = code
+
+
+def _truncate_safe_message(message: str | None) -> str | None:
+    if not message:
+        return None
+    normalized = " ".join(message.split())
+    if not normalized:
+        return None
+    return normalized[:SAFE_MESSAGE_MAX_CHARS]
+
+
+def _sanitize_exception_message(
+    message: str | None, *, api_key: str | None
+) -> str | None:
+    if not message:
+        return None
+
+    safe_message = message
+    safe_message = _DATA_IMAGE_PATTERN.sub("[REDACTED_IMAGE_DATA]", safe_message)
+    safe_message = _BYTES_LITERAL_PATTERN.sub("b'[REDACTED_BYTES]'", safe_message)
+    safe_message = _API_KEY_PATTERN.sub(r"\1=[REDACTED]", safe_message)
+    safe_message = _SENSITIVE_FIELD_PATTERN.sub(r"\1=[REDACTED]", safe_message)
+    safe_message = safe_message.replace("image_bytes", "[REDACTED_IMAGE_BYTES]")
+    safe_message = _LONG_BASE64_CHUNK_PATTERN.sub("[REDACTED_BASE64]", safe_message)
+
+    if api_key:
+        safe_message = safe_message.replace(api_key, "[REDACTED_API_KEY]")
+
+    return _truncate_safe_message(safe_message)
+
+
+def _coerce_status_code(value: object) -> int | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str) and value.isdigit():
+        return int(value)
+    return None
+
+
+def _extract_provider_details(exc: Exception) -> tuple[int | None, str | int | None]:
+    status_code = _coerce_status_code(getattr(exc, "status_code", None))
+    if status_code is None:
+        response = getattr(exc, "response", None)
+        status_code = _coerce_status_code(getattr(response, "status_code", None))
+
+    code = getattr(exc, "code", None)
+    if isinstance(code, bool) or not isinstance(code, (str, int)):
+        code = None
+
+    return status_code, code
+
+
+def _gemini_analysis_error_from_exception(
+    exc: Exception, *, api_key: str | None
+) -> GeminiAnalysisError:
+    status_code, code = _extract_provider_details(exc)
+    return GeminiAnalysisError(
+        exc.__class__.__name__,
+        safe_message=_sanitize_exception_message(str(exc), api_key=api_key),
+        status_code=status_code,
+        code=code,
+    )
 
 
 class GeminiConfidence(BaseModel):
@@ -129,11 +217,17 @@ async def analyze_image_with_gemini(
         )
         parsed = _parse_gemini_response(response)
     except asyncio.TimeoutError as exc:
-        raise GeminiAnalysisError("TimeoutError") from exc
+        raise _gemini_analysis_error_from_exception(
+            exc, api_key=settings.gemini_api_key
+        ) from exc
     except (ValidationError, ValueError, TypeError) as exc:
-        raise GeminiAnalysisError(exc.__class__.__name__) from exc
+        raise _gemini_analysis_error_from_exception(
+            exc, api_key=settings.gemini_api_key
+        ) from exc
     except Exception as exc:
-        raise GeminiAnalysisError(exc.__class__.__name__) from exc
+        raise _gemini_analysis_error_from_exception(
+            exc, api_key=settings.gemini_api_key
+        ) from exc
 
     warnings = parsed.warnings or [
         "No RAG or retrieval-backed citations are connected yet.",

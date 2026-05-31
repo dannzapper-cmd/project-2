@@ -124,6 +124,9 @@ async def _run_analysis(
                 else "error",
                 "model": settings.gemini_model,
                 "error_class": exc.error_class,
+                "safe_message": exc.safe_message,
+                "provider_status": exc.status_code,
+                "provider_code": exc.code,
             },
         )
 
