@@ -28,6 +28,9 @@ _DATA_IMAGE_PATTERN = re.compile(
 )
 _LONG_BASE64_CHUNK_PATTERN = re.compile(r"(?<![A-Za-z0-9+/=])[A-Za-z0-9+/=]{80,}")
 _BYTES_LITERAL_PATTERN = re.compile(r"b(['\"]).*?\1", re.DOTALL)
+_SENSITIVE_FIELD_PATTERN = re.compile(
+    r"(?i)\b(prompt|payload|request_payload|contents|response_body|image_bytes)\b\s*[:=]\s*([^;,\n]+)"
+)
 
 
 class GeminiAnalysisError(Exception):
@@ -65,6 +68,7 @@ def _sanitize_exception_message(
     safe_message = _DATA_IMAGE_PATTERN.sub("[REDACTED_IMAGE_DATA]", safe_message)
     safe_message = _BYTES_LITERAL_PATTERN.sub("b'[REDACTED_BYTES]'", safe_message)
     safe_message = _API_KEY_PATTERN.sub(r"\1=[REDACTED]", safe_message)
+    safe_message = _SENSITIVE_FIELD_PATTERN.sub(r"\1=[REDACTED]", safe_message)
     safe_message = safe_message.replace("image_bytes", "[REDACTED_IMAGE_BYTES]")
     safe_message = _LONG_BASE64_CHUNK_PATTERN.sub("[REDACTED_BASE64]", safe_message)
 
