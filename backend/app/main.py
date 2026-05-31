@@ -17,6 +17,8 @@ from app.schemas import (
     MetricsSummaryResponse,
     ProductChatRequest,
     ProductChatResponse,
+    ProductGraphRequest,
+    ProductGraphResponse,
 )
 from app.services.analysis_router import (
     AnalysisUnavailableError,
@@ -25,6 +27,7 @@ from app.services.analysis_router import (
 from app.services.metrics import metrics
 from app.services.product_chat import ProductChatError, answer_product_question
 from app.services.product_compare import ProductCompareError, compare_products
+from app.services.product_graph import build_product_graph_response
 
 
 SERVICE_NAME = "snapinsight-backend"
@@ -174,6 +177,53 @@ async def health() -> HealthResponse | JSONResponse:
         mock_fallback_allowed=settings.mock_fallback_allowed,
         cache_enabled=settings.cache_enabled,
     )
+
+
+@app.post("/v1/graph/product", response_model=ProductGraphResponse)
+async def graph_product(
+    request: ProductGraphRequest,
+) -> ProductGraphResponse | JSONResponse:
+    start_time = time.monotonic()
+    request_id = str(uuid.uuid4())
+
+    try:
+        settings = get_settings()
+    except ConfigurationError as exc:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": "invalid_configuration",
+                "message": exc.message,
+                "request_id": request_id,
+            },
+        )
+
+    if _contains_media_payload(request.model_dump()):
+        return JSONResponse(
+            status_code=400,
+            content={
+                "error": "graph_media_not_allowed",
+                "message": "Graph accepts analysis results only, not image or audio bytes.",
+                "request_id": request_id,
+            },
+        )
+
+    try:
+        return build_product_graph_response(
+            analysis=request.analysis,
+            request_id=request_id,
+            settings=settings,
+            started_at=start_time,
+        )
+    except ValueError as exc:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "error": "graph_invalid_payload",
+                "message": str(exc),
+                "request_id": request_id,
+            },
+        )
 
 
 @app.get("/v1/metrics/summary", response_model=MetricsSummaryResponse)

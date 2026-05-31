@@ -187,3 +187,69 @@ class CompareProductsResponse(BaseModel):
     warnings: list[str] = Field(default_factory=list)
     request_id: str
     latency_ms: int = Field(ge=0)
+
+
+GraphNodeType = Literal[
+    "product",
+    "brand",
+    "category",
+    "nutrition",
+    "ingredient",
+    "additive",
+    "warning",
+    "citation",
+    "alternative",
+]
+
+GraphBackend = Literal["memory", "neo4j", "neo4j_fallback"]
+
+
+class GraphNode(BaseModel):
+    id: str
+    type: GraphNodeType
+    label: str
+    detail: str | None = None
+    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+    field: str | None = None
+    url: str | None = None
+
+
+class GraphEdge(BaseModel):
+    id: str
+    source: str
+    target: str
+    relationship: str
+    label: str | None = None
+
+
+class EvidencePathStep(BaseModel):
+    node_id: str
+    node_type: GraphNodeType
+    label: str
+
+
+class EvidencePath(BaseModel):
+    id: str
+    path_type: Literal[
+        "warning_nutrition_citation",
+        "additive_warning_citation",
+        "alternative_category_citation",
+        "insight_citation",
+    ]
+    summary: str
+    steps: list[EvidencePathStep] = Field(default_factory=list)
+    citation_field: str | None = None
+
+
+class ProductGraphRequest(BaseModel):
+    analysis: AnalyzeImageResponse
+
+
+class ProductGraphResponse(BaseModel):
+    nodes: list[GraphNode] = Field(default_factory=list)
+    edges: list[GraphEdge] = Field(default_factory=list)
+    evidence_paths: list[EvidencePath] = Field(default_factory=list)
+    graph_backend: GraphBackend = "memory"
+    graph_enabled: bool = True
+    request_id: str
+    latency_ms: int = Field(ge=0)

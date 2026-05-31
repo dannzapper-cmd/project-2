@@ -10,6 +10,7 @@ import {
   type AnalysisResponse,
 } from "@/lib/snapinsight-api"
 import { preprocessImageForUpload } from "@/lib/image-preprocess"
+import { EvidenceGraphPanel } from "@/components/snapinsight/evidence-graph-panel"
 import { MockAnalysisResultCard } from "@/components/snapinsight/mock-analysis-result-card"
 import { ProductChatPanel } from "@/components/snapinsight/product-chat-panel"
 import { ProductComparePanel } from "@/components/snapinsight/product-compare-panel"
@@ -478,6 +479,7 @@ export function ImageInputPanel({ className }: ImageInputPanelProps) {
       {analysisResult && (
         <>
           <MockAnalysisResultCard result={analysisResult} />
+          <EvidenceGraphPanel analysis={analysisResult} />
           <ProductComparePanel
             currentResult={analysisResult}
             productA={compareProductA}

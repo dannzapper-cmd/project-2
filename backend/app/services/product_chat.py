@@ -11,6 +11,7 @@ from app.schemas import (
     Citation,
     ProductChatResponse,
 )
+from app.services.product_graph import graph_context_for_chat
 
 
 CHAT_TIMEOUT_SECONDS = 30.0
@@ -178,6 +179,11 @@ def build_compact_context(
             f"{message.role}: {message.content.strip()[:MAX_HISTORY_CHARS]}"
         )
     used = _append_with_budget(parts, "Recent chat: " + " | ".join(history_lines), used)
+
+    # GraphRAG Lite: enrich chat with evidence paths from the product graph.
+    graph_paths = graph_context_for_chat(analysis)
+    if graph_paths:
+        used = _append_with_budget(parts, graph_paths, used)
 
     return "\n".join(parts)
 
