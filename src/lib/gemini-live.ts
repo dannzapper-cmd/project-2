@@ -162,7 +162,7 @@ export function base64ToBytes(base64: string): Uint8Array {
   return bytes
 }
 
-export function pcm16Base64ToFloat32(base64: string): Float32Array {
+export function pcm16Base64ToFloat32(base64: string): Float32Array<ArrayBuffer> {
   const bytes = base64ToBytes(base64)
   const samples = new Float32Array(Math.floor(bytes.length / 2))
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
@@ -172,7 +172,7 @@ export function pcm16Base64ToFloat32(base64: string): Float32Array {
   return samples
 }
 
-export function float32ToPcm16Base64(input: Float32Array): string {
+export function float32ToPcm16Base64(input: Float32Array<ArrayBufferLike>): string {
   const buffer = new ArrayBuffer(input.length * 2)
   const view = new DataView(buffer)
   for (let index = 0; index < input.length; index += 1) {

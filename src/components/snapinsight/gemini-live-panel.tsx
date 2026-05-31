@@ -222,7 +222,12 @@ export function GeminiLivePanel({ className }: { className?: string }) {
       const samples = pcm16Base64ToFloat32(base64)
       const sampleRate = getAudioSampleRate(mimeType)
       const buffer = context.createBuffer(1, samples.length, sampleRate)
-      const channelData = new Float32Array(samples.length)
+      const channelDataBuffer = new ArrayBuffer(
+        samples.length * Float32Array.BYTES_PER_ELEMENT
+      )
+      const channelData: Float32Array<ArrayBuffer> = new Float32Array(
+        channelDataBuffer
+      )
       channelData.set(samples)
       buffer.copyToChannel(channelData, 0)
       const source = context.createBufferSource()
