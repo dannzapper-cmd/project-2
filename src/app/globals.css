@@ -203,3 +203,97 @@
     @apply min-h-[44px] min-w-[44px];
   }
 }
+
+/* Evidence Graph — React Flow dark theme overrides (Block 18A polish) */
+.evidence-graph-flow .react-flow__controls {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--background) 55%, transparent);
+  overflow: hidden;
+  gap: 0;
+}
+
+.evidence-graph-flow .react-flow__controls-button {
+  background: var(--secondary);
+  border: none;
+  border-bottom: 1px solid var(--border);
+  color: var(--foreground);
+  width: 28px;
+  height: 28px;
+  min-height: 28px;
+  min-width: 28px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.evidence-graph-flow .react-flow__controls-button:last-child {
+  border-bottom: none;
+}
+
+.evidence-graph-flow .react-flow__controls-button:hover {
+  background: var(--muted);
+}
+
+.evidence-graph-flow .react-flow__controls-button:disabled {
+  opacity: 0.45;
+}
+
+.evidence-graph-flow .react-flow__controls-button svg {
+  fill: var(--foreground);
+  max-width: 14px;
+  max-height: 14px;
+}
+
+.evidence-graph-flow .react-flow__minimap {
+  width: 120px;
+  height: 80px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.evidence-graph-flow .react-flow__minimap-mask {
+  fill: color-mix(in srgb, var(--background) 72%, transparent);
+}
+
+.evidence-graph-flow .react-flow__minimap-node {
+  fill: var(--primary);
+}
+
+@media (max-width: 768px) {
+  .evidence-graph-flow .react-flow__minimap {
+    display: none;
+  }
+}
+
+.evidence-graph-flow .react-flow__edge.animated path {
+  stroke-dasharray: 5 5;
+  animation: evidence-edge-dash 1s linear infinite;
+}
+
+@keyframes evidence-edge-dash {
+  to {
+    stroke-dashoffset: -10;
+  }
+}
+
+.evidence-graph-flow .evidence-edge-label {
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--card) 90%, transparent);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(6px);
+  white-space: nowrap;
+  pointer-events: none;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
