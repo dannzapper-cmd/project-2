@@ -1,3 +1,4 @@
+import logging
 import os
 import time
 import uuid
@@ -5,20 +6,21 @@ import uuid
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.config import get_effective_analysis_mode, get_settings
 from app.schemas import AnalyzeImageResponse, HealthResponse
-from app.services.mock_analysis import build_mock_image_analysis_response
+from app.services.analysis_router import analyze_product_image
 
 
 SERVICE_NAME = "snapinsight-backend"
 APP_VERSION = "0.1.0"
 API_VERSION = "v1"
-MODE = "mock"
 MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024
 MAX_FILE_SIZE_MB = MAX_FILE_SIZE_BYTES // (1024 * 1024)
 DEFAULT_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
 ]
+logger = logging.getLogger(__name__)
 
 
 def get_allowed_origins() -> list[str]:
@@ -36,7 +38,7 @@ def get_allowed_origins() -> list[str]:
 
 app = FastAPI(
     title="SnapInsight Backend API",
-    description="Mock/no-AI backend contract for SnapInsight image analysis.",
+    description="SnapInsight image analysis API with mock and Gemini modes.",
     version=APP_VERSION,
 )
 
@@ -51,10 +53,11 @@ app.add_middleware(
 
 @app.get("/health", response_model=HealthResponse)
 async def health() -> HealthResponse:
+    settings = get_settings()
     return HealthResponse(
         status="ok",
         service=SERVICE_NAME,
-        mode=MODE,
+        mode=get_effective_analysis_mode(settings),
         version=APP_VERSION,
     )
 
@@ -64,6 +67,7 @@ async def analyze_image(
     file: UploadFile = File(...),
 ) -> AnalyzeImageResponse:
     start_time = time.monotonic()
+    request_id = str(uuid.uuid4())
     content_type = file.content_type or ""
 
     # This MIME type is client-declared and not verified against file magic
@@ -79,17 +83,26 @@ async def analyze_image(
     finally:
         await file.close()
 
-    if len(contents) > MAX_FILE_SIZE_BYTES:
+    file_size_bytes = len(contents)
+    if file_size_bytes > MAX_FILE_SIZE_BYTES:
         raise HTTPException(
             status_code=413,
             detail=f"File too large. Maximum supported size is {MAX_FILE_SIZE_MB}MB.",
         )
 
-    request_id = str(uuid.uuid4())
-    latency_ms = int((time.monotonic() - start_time) * 1000)
+    logger.info(
+        "Image analysis request accepted",
+        extra={
+            "request_id": request_id,
+            "content_type": content_type,
+            "file_size_bytes": file_size_bytes,
+        },
+    )
 
-    return build_mock_image_analysis_response(
+    return await analyze_product_image(
         request_id=request_id,
-        latency_ms=latency_ms,
+        image_bytes=contents,
+        content_type=content_type,
+        started_at=start_time,
         api_version=API_VERSION,
     )

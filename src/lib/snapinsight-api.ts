@@ -38,7 +38,7 @@ export interface AnalysisMeta {
 
 export interface AnalysisResponse {
   request_id: string
-  mode: "mock"
+  mode: "mock" | "gemini" | "mock_fallback"
   status: "completed"
   product: AnalysisProduct
   insights: AnalysisInsight[]

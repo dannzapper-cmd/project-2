@@ -48,7 +48,7 @@ class ResponseMeta(BaseModel):
 
 class AnalyzeImageResponse(BaseModel):
     request_id: str
-    mode: Literal["mock"]
+    mode: Literal["mock", "gemini", "mock_fallback"]
     status: Literal["completed"]
     product: ProductSummary
     insights: list[Insight]

@@ -1,3 +1,5 @@
+from typing import Literal
+
 from app.schemas import (
     AnalyzeImageResponse,
     Confidence,
@@ -8,13 +10,27 @@ from app.schemas import (
 )
 
 
+MockMode = Literal["mock", "mock_fallback"]
+
+
 def build_mock_image_analysis_response(
-    *, request_id: str, latency_ms: int, api_version: str
+    *,
+    request_id: str,
+    latency_ms: int,
+    api_version: str,
+    mode: MockMode = "mock",
+    warnings: list[str] | None = None,
+    model: str = "none",
 ) -> AnalyzeImageResponse:
     """Build a stable mock contract response without calling an AI model."""
+    response_warnings = warnings or [
+        "Mock/demo response only; no AI model was called.",
+        "No image was stored.",
+    ]
+
     return AnalyzeImageResponse(
         request_id=request_id,
-        mode="mock",
+        mode=mode,
         status="completed",
         product=ProductSummary(
             display_name="Product image received",
@@ -36,10 +52,7 @@ def build_mock_image_analysis_response(
                 type="system",
             )
         ],
-        warnings=[
-            "Mock/demo response only; no AI model was called.",
-            "No image was stored.",
-        ],
+        warnings=response_warnings,
         citations=[],
         next_questions=[
             "What product is this?",
@@ -47,7 +60,7 @@ def build_mock_image_analysis_response(
         ],
         privacy=PrivacySummary(image_stored=False, image_retention="none"),
         meta=ResponseMeta(
-            model="none",
+            model=model,
             latency_ms=latency_ms,
             api_version=api_version,
         ),
