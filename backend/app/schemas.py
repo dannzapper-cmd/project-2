@@ -13,6 +13,10 @@ class HealthResponse(BaseModel):
     gemini_configured: bool
     mock_fallback_allowed: bool
     cache_enabled: bool = True
+    llmops_enabled: bool = False
+    llmops_configured: bool = False
+    llmops_provider: str = "disabled"
+    llmops_environment: str | None = None
 
 
 class Confidence(BaseModel):
@@ -139,6 +143,10 @@ class MetricsSummaryResponse(BaseModel):
     last_latency_ms: int | None = None
     average_latency_ms: int | None = None
     uptime_seconds: int
+    llmops_enabled: bool = False
+    llmops_configured: bool = False
+    llmops_provider: str = "disabled"
+    llmops_environment: str | None = None
 
 
 class ChatMessage(BaseModel):

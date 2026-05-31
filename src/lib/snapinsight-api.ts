@@ -98,6 +98,10 @@ export interface HealthResponse {
   gemini_configured: boolean
   mock_fallback_allowed: boolean
   cache_enabled: boolean
+  llmops_enabled?: boolean
+  llmops_configured?: boolean
+  llmops_provider?: "langfuse" | "disabled"
+  llmops_environment?: string | null
 }
 
 export interface MetricsSummaryResponse {
@@ -105,6 +109,10 @@ export interface MetricsSummaryResponse {
   last_latency_ms: number | null
   average_latency_ms: number | null
   uptime_seconds: number
+  llmops_enabled?: boolean
+  llmops_configured?: boolean
+  llmops_provider?: "langfuse" | "disabled"
+  llmops_environment?: string | null
 }
 
 export interface ChatMessage {

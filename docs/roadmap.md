@@ -115,6 +115,16 @@ Delivery is organized into **blocks**. Block count is not rigid: blocks may be c
 ## Block 18 — Optional wow features
 
 - Export share card, shelf scan batch mode, regional dataset swap—only after core is stable.
+- **Block 18A status:** Product Knowledge Graph / GraphRAG Lite added with
+  Neo4j Aura support and in-memory fallback.
+- **Block 18B status:** Live Product Session Lite added as a lightweight
+  client/session experience; no Gemini Live or server-side audio.
+- **Block 18C status:** Small Product Intelligence Tuning Pipeline added as
+  offline/reference docs and tooling only, not runtime serving.
+- **Block 18D status:** Optional backend Langfuse LLMOps visibility traces
+  analysis, chat, compare, and graph flows with safe aggregate metadata only.
+  No auth, new database, heavy observability stack, Gemini Live, or fine-tuning
+  serving is added.
 
 ## Sequencing notes
 

@@ -6,3 +6,4 @@ google-genai>=0.8.0
 pytest>=8.0.0
 httpx>=0.28.1
 neo4j>=5.20.0
+langfuse

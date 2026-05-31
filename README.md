@@ -24,7 +24,9 @@ Food, packaged goods, and consumer packaged products (CPG), grounded in open dat
 The current implementation includes the PWA shell, image upload/camera snapshot,
 FastAPI analysis API, Gemini real-analysis mode, OpenFoodFacts grounding,
 contextual chat, browser-only Voice Lite, Compare Mode Lite, in-memory
-cache/metrics, deploy readiness docs, offline eval fixtures, and smoke checks.
+cache/metrics, Product Knowledge Graph / GraphRAG Lite, Live Product Session
+Lite, offline tuning references, optional Langfuse LLMOps visibility, deploy
+readiness docs, offline eval fixtures, and smoke checks.
 
 ## Planned stack (not implemented)
 
@@ -34,10 +36,10 @@ Target architecture favors API-first, cloud-first delivery: a **Next.js** PWA wi
 
 ## Current status
 
-**Block 14/15 — Deploy readiness + minimal evals + smoke harness.** This block
-prepares the project for deployment and basic operational validation. It is not
-final QA/polish and adds no database, Redis, auth, persistent storage, Langfuse,
-Sentry, or new AI feature.
+**Block 18D — Focused LLMOps + DevOps visibility.** The current backend includes
+optional Langfuse observability for key API flows with safe aggregate metadata
+only. It adds no auth, new database, Gemini Live, fine-tuning serving, or new
+uploaded-file persistence.
 
 ## Documentation
 
@@ -51,6 +53,7 @@ Sentry, or new AI feature.
 | [docs/ai-workflow.md](./docs/ai-workflow.md) | Development workflow across tools |
 | [docs/deploy.md](./docs/deploy.md) | Deploy readiness guide and required env vars |
 | [docs/smoke-test.md](./docs/smoke-test.md) | Automated and manual post-deploy smoke checks |
+| [docs/llmops.md](./docs/llmops.md) | Optional Langfuse LLMOps setup, privacy guarantees, and verification |
 
 ## Limitations (summary)
 
