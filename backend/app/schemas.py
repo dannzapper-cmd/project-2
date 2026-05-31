@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class HealthResponse(BaseModel):
@@ -17,6 +17,10 @@ class HealthResponse(BaseModel):
     llmops_configured: bool = False
     llmops_provider: str = "disabled"
     llmops_environment: str | None = None
+    gemini_live_enabled: bool = False
+    gemini_live_configured: bool = False
+    gemini_live_provider: str = "gemini_live"
+    gemini_live_model: str | None = None
 
 
 class Confidence(BaseModel):
@@ -147,6 +151,10 @@ class MetricsSummaryResponse(BaseModel):
     llmops_configured: bool = False
     llmops_provider: str = "disabled"
     llmops_environment: str | None = None
+    gemini_live_enabled: bool = False
+    gemini_live_configured: bool = False
+    gemini_live_provider: str = "gemini_live"
+    gemini_live_model: str | None = None
 
 
 class ChatMessage(BaseModel):
@@ -261,3 +269,74 @@ class ProductGraphResponse(BaseModel):
     graph_enabled: bool = True
     request_id: str
     latency_ms: int = Field(ge=0)
+
+
+class GeminiLiveConfigResponse(BaseModel):
+    enabled: bool
+    configured: bool
+    provider: str = "gemini_live"
+    model: str
+    audio_enabled: bool
+    vision_enabled: bool
+    max_session_seconds: int = Field(ge=1)
+    max_frames_per_second: int = Field(ge=1)
+    requires_access_code: bool
+    status: Literal["disabled", "not_configured", "ready"]
+
+
+class GeminiLiveTokenRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    access_code: str | None = Field(default=None, max_length=256)
+
+
+class GeminiLiveTokenResponse(BaseModel):
+    status: Literal[
+        "ready",
+        "disabled",
+        "not_configured",
+        "access_denied",
+        "rate_limited",
+        "token_error",
+    ]
+    enabled: bool
+    configured: bool
+    provider: str = "gemini_live"
+    model: str
+    token: str | None = None
+    websocket_url: str | None = None
+    expires_in_seconds: int | None = None
+    modality: Literal["audio_with_transcription"] = "audio_with_transcription"
+    audio_enabled: bool
+    vision_enabled: bool
+    max_session_seconds: int = Field(ge=1)
+    max_frames_per_second: int = Field(ge=1)
+    requires_access_code: bool
+    message: str | None = None
+
+
+LiveTelemetryEvent = Literal[
+    "live_session_started",
+    "live_session_connected",
+    "live_session_ended",
+    "live_session_error",
+]
+
+
+class GeminiLiveTelemetryRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    event: LiveTelemetryEvent
+    duration_seconds: float | None = Field(default=None, ge=0, le=3600)
+    frames_sent_count: int | None = Field(default=None, ge=0, le=10000)
+    audio_enabled: bool | None = None
+    vision_enabled: bool | None = None
+    text_messages_count: int | None = Field(default=None, ge=0, le=1000)
+    model: str | None = Field(default=None, max_length=120)
+    status: str | None = Field(default=None, max_length=80)
+    error_type: str | None = Field(default=None, max_length=120)
+
+
+class GeminiLiveTelemetryResponse(BaseModel):
+    status: Literal["accepted"]
+    request_id: str

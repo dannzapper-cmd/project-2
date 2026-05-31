@@ -178,6 +178,21 @@ export function StatusMetricsPanel({
                     health ? (health.cache_enabled ? "enabled" : "disabled") : "unknown"
                   }
                 />
+                <Row
+                  label="Gemini Live"
+                  value={
+                    health
+                      ? health.gemini_live_enabled
+                        ? health.gemini_live_configured
+                          ? "ready"
+                          : "not configured"
+                        : "disabled"
+                      : "unknown"
+                  }
+                />
+                {health?.gemini_live_model && (
+                  <Row label="Live model" value={health.gemini_live_model} />
+                )}
               </div>
 
               {latestResult && (

@@ -125,6 +125,11 @@ Delivery is organized into **blocks**. Block count is not rigid: blocks may be c
   analysis, chat, compare, and graph flows with safe aggregate metadata only.
   No auth, new database, heavy observability stack, Gemini Live, or fine-tuning
   serving is added.
+- **Block 18E status:** Gemini Live full integration is implemented behind
+  deployment-safe env flags. The backend mints v1alpha constrained ephemeral
+  tokens; the browser streams microphone audio, camera snapshots, and text
+  directly to Gemini when enabled. Default deployment remains disabled, with no
+  auth system, WebRTC infrastructure, media persistence, or database added.
 
 ## Sequencing notes
 

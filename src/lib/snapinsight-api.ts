@@ -102,6 +102,10 @@ export interface HealthResponse {
   llmops_configured?: boolean
   llmops_provider?: "langfuse" | "disabled"
   llmops_environment?: string | null
+  gemini_live_enabled?: boolean
+  gemini_live_configured?: boolean
+  gemini_live_provider?: "gemini_live"
+  gemini_live_model?: string | null
 }
 
 export interface MetricsSummaryResponse {
@@ -113,6 +117,69 @@ export interface MetricsSummaryResponse {
   llmops_configured?: boolean
   llmops_provider?: "langfuse" | "disabled"
   llmops_environment?: string | null
+  gemini_live_enabled?: boolean
+  gemini_live_configured?: boolean
+  gemini_live_provider?: "gemini_live"
+  gemini_live_model?: string | null
+}
+
+export type GeminiLiveStatus = "disabled" | "not_configured" | "ready"
+
+export interface GeminiLiveConfigResponse {
+  enabled: boolean
+  configured: boolean
+  provider: "gemini_live"
+  model: string
+  audio_enabled: boolean
+  vision_enabled: boolean
+  max_session_seconds: number
+  max_frames_per_second: number
+  requires_access_code: boolean
+  status: GeminiLiveStatus
+}
+
+export type GeminiLiveTokenStatus =
+  | "ready"
+  | "disabled"
+  | "not_configured"
+  | "access_denied"
+  | "rate_limited"
+  | "token_error"
+
+export interface GeminiLiveTokenResponse {
+  status: GeminiLiveTokenStatus
+  enabled: boolean
+  configured: boolean
+  provider: "gemini_live"
+  model: string
+  token: string | null
+  websocket_url: string | null
+  expires_in_seconds: number | null
+  modality: "audio_with_transcription"
+  audio_enabled: boolean
+  vision_enabled: boolean
+  max_session_seconds: number
+  max_frames_per_second: number
+  requires_access_code: boolean
+  message: string | null
+}
+
+export type GeminiLiveTelemetryEvent =
+  | "live_session_started"
+  | "live_session_connected"
+  | "live_session_ended"
+  | "live_session_error"
+
+export interface GeminiLiveTelemetryPayload {
+  event: GeminiLiveTelemetryEvent
+  duration_seconds?: number | null
+  frames_sent_count?: number | null
+  audio_enabled?: boolean | null
+  vision_enabled?: boolean | null
+  text_messages_count?: number | null
+  model?: string | null
+  status?: string | null
+  error_type?: string | null
 }
 
 export interface ChatMessage {
@@ -353,6 +420,50 @@ export async function getMetricsSummary(
     throw new Error(`Metrics request failed with status ${response.status}.`)
   }
   return response.json() as Promise<MetricsSummaryResponse>
+}
+
+export async function getGeminiLiveConfig(
+  signal?: AbortSignal
+): Promise<GeminiLiveConfigResponse> {
+  const response = await fetch(`${getApiBase()}/v1/live/config`, { signal })
+  if (!response.ok) {
+    throw new Error(`Live config request failed with status ${response.status}.`)
+  }
+  return response.json() as Promise<GeminiLiveConfigResponse>
+}
+
+export async function requestGeminiLiveToken(
+  accessCode?: string,
+  signal?: AbortSignal
+): Promise<GeminiLiveTokenResponse> {
+  const response = await fetch(`${getApiBase()}/v1/live/token`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(accessCode ? { access_code: accessCode } : {}),
+    signal,
+  })
+
+  const body = (await response.json()) as GeminiLiveTokenResponse
+  if (!response.ok) {
+    return body
+  }
+  return body
+}
+
+export async function sendGeminiLiveTelemetry(
+  payload: GeminiLiveTelemetryPayload,
+  signal?: AbortSignal
+): Promise<void> {
+  await fetch(`${getApiBase()}/v1/live/telemetry`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+    signal,
+  }).catch(() => undefined)
 }
 
 export async function fetchProductGraph(

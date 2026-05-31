@@ -11,7 +11,8 @@ CI, and controlled demo fallback.
 - Mock fallback is opt-in and visibly labeled when enabled.
 - OpenFoodFacts grounding provides the first citation foundation when a conservative match is available.
 - Contextual chat, Compare Mode Lite, Product Knowledge Graph / GraphRAG Lite,
-  in-memory cache/metrics, and optional Langfuse LLMOps visibility are available.
+  in-memory cache/metrics, optional Langfuse LLMOps visibility, and Gemini Live
+  code paths disabled by env until activation are available.
 - No auth, persistent user database, or uploaded-file storage.
 - Uploaded image bytes are read for validation and analysis only; they are never
   saved to disk, database, localStorage, sessionStorage, or remote storage.
@@ -78,6 +79,14 @@ The backend never defaults CORS to `*`.
 - `LANGFUSE_SECRET_KEY`: required when LLMOps tracing is enabled; keep server-side only.
 - `LANGFUSE_BASE_URL`: required when LLMOps tracing is enabled.
 - `LANGFUSE_TRACING_ENVIRONMENT`: optional safe environment label surfaced in health/metrics and traces.
+- `SNAPINSIGHT_GEMINI_LIVE_ENABLED`: `false` by default; set `true` only when activating Gemini Live.
+- `SNAPINSIGHT_GEMINI_LIVE_MODEL`: optional, defaults to `gemini-3.1-flash-live-preview`.
+- `SNAPINSIGHT_LIVE_ACCESS_CODE`: optional but strongly recommended before enabling Gemini Live.
+- `SNAPINSIGHT_LIVE_MAX_SESSION_SECONDS`: optional, defaults to `120`.
+- `SNAPINSIGHT_LIVE_MAX_FRAMES_PER_SECOND`: optional, defaults to `1`.
+- `SNAPINSIGHT_LIVE_AUDIO_ENABLED`: optional, defaults to `true`.
+- `SNAPINSIGHT_LIVE_VISION_ENABLED`: optional, defaults to `true`.
+- `SNAPINSIGHT_LIVE_SYSTEM_INSTRUCTION`: optional server-side system instruction locked into ephemeral token constraints.
 - Production/demo should set `SNAPINSIGHT_ANALYSIS_MODE=gemini` and provide `GEMINI_API_KEY`.
 - Missing keys or Gemini failures in gemini mode return HTTP 503 unless mock fallback is explicitly allowed.
 - Gemini calls may incur provider usage costs.
@@ -234,6 +243,23 @@ Langfuse. `/health` and `/v1/metrics/summary` expose only safe precomputed
 LLMOps fields and never call Langfuse live. See
 [`../docs/llmops.md`](../docs/llmops.md) for setup, privacy details, and the
 Render/Langfuse verification checklist.
+
+## Gemini Live (Block 18E)
+
+Gemini Live is implemented but disabled by default. `GET /v1/live/config`
+returns safe public deployment status. `POST /v1/live/token` mints a one-use
+Gemini Live ephemeral token server-side only when Live is enabled, Gemini is
+configured, and the optional access code matches. The response includes only the
+token name string, constrained WebSocket URL, 90-second new-session window,
+modality label, and safe feature/session limits. It never returns `GEMINI_API_KEY`,
+the full token object, access code, or internal credentials.
+
+`POST /v1/live/telemetry` accepts safe lifecycle metadata only and forwards it to
+LLMOps when configured. It rejects transcripts, raw prompts/text, media bytes,
+base64, token values, access codes, and secrets. The browser streams Live media
+directly to Gemini via the ephemeral token; Render does not proxy audio/video
+frames. See [`../docs/gemini-live.md`](../docs/gemini-live.md) for activation,
+privacy, cost guardrails, CSP, and QA.
 
 ## Deploy readiness, evals, and smoke checks
 

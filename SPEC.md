@@ -85,6 +85,20 @@ authorization headers, or PII. Langfuse is optional: disabled, missing, or
 failing configuration degrades to no-op and must not affect product responses or
 health checks.
 
+## Configuration note — Gemini Live
+
+Block 18E implements Gemini Live as a deployment-disabled capability. The
+backend mints short-lived Gemini Live ephemeral tokens with server-side
+`GEMINI_API_KEY`, v1alpha auth tokens, one-use constraints, locked model,
+`AUDIO` response modality, output audio transcription, and a safe server-side
+system instruction. The browser uses the returned constrained WebSocket URL and
+token so microphone audio, camera snapshots, and text go directly to Gemini, not
+through the SnapInsight backend. SnapInsight does not persist Live media,
+transcripts, raw text, tokens, or sessions. Safe telemetry is aggregate-only:
+session lifecycle, duration, frame counts, text-message counts, modality flags,
+status, and error type. Live remains optional and off by default via
+`SNAPINSIGHT_GEMINI_LIVE_ENABLED=false`.
+
 ## Configuration note — deploy readiness, evals, and smoke harness
 
 Block 14/15 adds deployment documentation, environment variable coverage,

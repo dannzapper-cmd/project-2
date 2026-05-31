@@ -3,6 +3,13 @@ from dataclasses import dataclass
 
 
 DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
+DEFAULT_GEMINI_LIVE_MODEL = "gemini-3.1-flash-live-preview"
+DEFAULT_GEMINI_LIVE_SYSTEM_INSTRUCTION = (
+    "You are SnapInsight's live product companion. Help the user understand "
+    "visible packaged products from camera frames, microphone audio, and text. "
+    "Be concise, cite uncertainty, avoid medical diagnosis, avoid absolute "
+    "health claims, and remind users to verify the physical label."
+)
 VALID_ANALYSIS_MODES = {"mock", "gemini"}
 VALID_BOOL_VALUES = {"true", "false"}
 
@@ -12,6 +19,8 @@ DEFAULT_CACHE_ENABLED = True
 DEFAULT_CACHE_TTL_SECONDS = 900
 DEFAULT_CACHE_MAX_ENTRIES = 50
 DEFAULT_MAX_IMAGE_MB = 8
+DEFAULT_LIVE_MAX_SESSION_SECONDS = 120
+DEFAULT_LIVE_MAX_FRAMES_PER_SECOND = 1
 
 
 class ConfigurationError(Exception):
@@ -34,6 +43,14 @@ class Settings:
     neo4j_uri: str | None
     neo4j_username: str | None
     neo4j_password: str | None
+    gemini_live_enabled: bool = False
+    gemini_live_model: str = DEFAULT_GEMINI_LIVE_MODEL
+    live_access_code: str | None = None
+    live_max_session_seconds: int = DEFAULT_LIVE_MAX_SESSION_SECONDS
+    live_max_frames_per_second: int = DEFAULT_LIVE_MAX_FRAMES_PER_SECOND
+    live_audio_enabled: bool = True
+    live_vision_enabled: bool = True
+    live_system_instruction: str = DEFAULT_GEMINI_LIVE_SYSTEM_INSTRUCTION
 
 
 def _clean_optional(value: str | None) -> str | None:
@@ -132,6 +149,38 @@ def get_settings() -> Settings:
         neo4j_uri=_clean_optional(os.getenv("NEO4J_URI")),
         neo4j_username=_clean_optional(os.getenv("NEO4J_USERNAME")),
         neo4j_password=_clean_optional(os.getenv("NEO4J_PASSWORD")),
+        gemini_live_enabled=_parse_bool_env(
+            "SNAPINSIGHT_GEMINI_LIVE_ENABLED",
+            os.getenv("SNAPINSIGHT_GEMINI_LIVE_ENABLED"),
+            default=False,
+        ),
+        gemini_live_model=_clean_optional(os.getenv("SNAPINSIGHT_GEMINI_LIVE_MODEL"))
+        or DEFAULT_GEMINI_LIVE_MODEL,
+        live_access_code=_clean_optional(os.getenv("SNAPINSIGHT_LIVE_ACCESS_CODE")),
+        live_max_session_seconds=_parse_positive_int_env(
+            "SNAPINSIGHT_LIVE_MAX_SESSION_SECONDS",
+            os.getenv("SNAPINSIGHT_LIVE_MAX_SESSION_SECONDS"),
+            default=DEFAULT_LIVE_MAX_SESSION_SECONDS,
+        ),
+        live_max_frames_per_second=_parse_positive_int_env(
+            "SNAPINSIGHT_LIVE_MAX_FRAMES_PER_SECOND",
+            os.getenv("SNAPINSIGHT_LIVE_MAX_FRAMES_PER_SECOND"),
+            default=DEFAULT_LIVE_MAX_FRAMES_PER_SECOND,
+        ),
+        live_audio_enabled=_parse_bool_env(
+            "SNAPINSIGHT_LIVE_AUDIO_ENABLED",
+            os.getenv("SNAPINSIGHT_LIVE_AUDIO_ENABLED"),
+            default=True,
+        ),
+        live_vision_enabled=_parse_bool_env(
+            "SNAPINSIGHT_LIVE_VISION_ENABLED",
+            os.getenv("SNAPINSIGHT_LIVE_VISION_ENABLED"),
+            default=True,
+        ),
+        live_system_instruction=_clean_optional(
+            os.getenv("SNAPINSIGHT_LIVE_SYSTEM_INSTRUCTION")
+        )
+        or DEFAULT_GEMINI_LIVE_SYSTEM_INSTRUCTION,
     )
 
 
