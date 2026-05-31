@@ -78,14 +78,17 @@ Delivery is organized into **blocks**. Block count is not rigid: blocks may be c
 ## Block 11 — Caching + cost controls
 
 - Perceptual hash cache, model routing, rate limits, session caps.
+- **Block 11/12/13 status:** In-memory LRU analysis cache (responses only, hashed image keys, never raw images), in-memory operational metrics with `/v1/metrics/summary`, client-side EXIF strip/resize, and stronger upload guardrails. No database, Redis, Langfuse, Sentry, auth, or persistent storage; deep observability/deploy QA stays in Block 14/15.
 
 ## Block 12 — Metrics dashboard
 
 - In-app or linked dashboard for latency, cost, retrieval, confidence aggregates.
+- Compact, collapsible in-app status/metrics panel landed in Block 11/12/13 (operational counters only, not user analytics).
 
 ## Block 13 — Privacy / safety controls
 
 - Consent copy, disclaimers, data retention policy enforcement, safety prompt suite.
+- Block 11/12/13 added client-side EXIF stripping, oversized-upload rejection, and explicit "not stored" copy for images/audio/chat/compare.
 
 ## Block 14 — Evals / observability
 
