@@ -44,6 +44,7 @@ Delivery is organized into **blocks**. Block count is not rigid: blocks may be c
 - Server-side Gemini (or equivalent) integration.
 - Structured product analysis from image + optional user hint.
 - **Block 4A/5A status:** Optional Gemini multimodal analysis added with safe mock fallback and clearer mode/confidence display.
+- **Block 4B status:** Gemini is the canonical real engine; mock and mock fallback are explicit development/demo paths with health visibility.
 
 ## Block 5 — Product card + confidence UX
 

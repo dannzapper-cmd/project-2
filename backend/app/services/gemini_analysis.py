@@ -100,6 +100,7 @@ async def analyze_image_with_gemini(
 
     try:
         client = genai.Client(api_key=settings.gemini_api_key)
+        # Privacy: image bytes are not logged or persisted.
         image_part = types.Part.from_bytes(
             data=image_bytes,
             mime_type=content_type,

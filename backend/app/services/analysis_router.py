@@ -1,7 +1,7 @@
 import logging
 import time
 
-from app.config import get_effective_analysis_mode, get_settings
+from app.config import Settings
 from app.schemas import AnalyzeImageResponse
 from app.services.gemini_analysis import (
     GeminiAnalysisError,
@@ -11,6 +11,22 @@ from app.services.mock_analysis import build_mock_image_analysis_response
 
 
 logger = logging.getLogger(__name__)
+
+
+class AnalysisUnavailableError(Exception):
+    def __init__(
+        self,
+        *,
+        error: str,
+        message: str,
+        latency_ms: int,
+        status_code: int = 503,
+    ) -> None:
+        super().__init__(message)
+        self.error = error
+        self.message = message
+        self.latency_ms = latency_ms
+        self.status_code = status_code
 
 
 def _latency_ms(started_at: float) -> int:
@@ -24,41 +40,25 @@ async def analyze_product_image(
     content_type: str,
     started_at: float,
     api_version: str,
+    settings: Settings,
 ) -> AnalyzeImageResponse:
-    settings = get_settings()
-    effective_mode = get_effective_analysis_mode(settings)
-
-    if settings.analysis_mode == "gemini" and not settings.gemini_api_key:
-        logger.warning(
-            "Gemini mode requested without API key",
-            extra={"request_id": request_id, "mode": "mock_fallback"},
-        )
-        return build_mock_image_analysis_response(
-            request_id=request_id,
-            latency_ms=_latency_ms(started_at),
-            api_version=api_version,
-            mode="mock_fallback",
-            warnings=[
-                "Analysis mode is set to 'gemini' but GEMINI_API_KEY is not "
-                "configured. Returning mock response.",
-                "No image was stored.",
-            ],
-        )
-
-    if effective_mode == "mock":
-        warnings = None
-        if not settings.analysis_mode and not settings.gemini_api_key:
-            warnings = [
-                "AI analysis is not configured. Returning mock response.",
-                "No image was stored.",
-            ]
-
+    if settings.analysis_mode == "mock":
         return build_mock_image_analysis_response(
             request_id=request_id,
             latency_ms=_latency_ms(started_at),
             api_version=api_version,
             mode="mock",
-            warnings=warnings,
+        )
+
+    if not settings.gemini_api_key:
+        logger.warning(
+            "Gemini mode requested without API key",
+            extra={"request_id": request_id, "mode": "error"},
+        )
+        raise AnalysisUnavailableError(
+            error="gemini_not_configured",
+            message="Gemini API key is not configured.",
+            latency_ms=0,
         )
 
     try:
@@ -77,18 +77,28 @@ async def analyze_product_image(
             "Gemini analysis failed",
             extra={
                 "request_id": request_id,
-                "mode": "mock_fallback",
+                "mode": "mock_fallback"
+                if settings.mock_fallback_allowed
+                else "error",
                 "model": settings.gemini_model,
                 "error_class": exc.error_class,
             },
         )
-        return build_mock_image_analysis_response(
-            request_id=request_id,
+
+        if settings.mock_fallback_allowed:
+            return build_mock_image_analysis_response(
+                request_id=request_id,
+                latency_ms=_latency_ms(started_at),
+                api_version=api_version,
+                mode="mock_fallback",
+                warnings=[
+                    "Gemini unavailable. Showing mock result.",
+                    "No image was stored.",
+                ],
+            )
+
+        raise AnalysisUnavailableError(
+            error="gemini_unavailable",
+            message="Gemini analysis failed and mock fallback is disabled.",
             latency_ms=_latency_ms(started_at),
-            api_version=api_version,
-            mode="mock_fallback",
-            warnings=[
-                "Analysis could not be completed. Using fallback response.",
-                "No image was stored.",
-            ],
         )

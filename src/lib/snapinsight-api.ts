@@ -51,6 +51,11 @@ export interface AnalysisResponse {
 
 interface ApiErrorBody {
   detail?: string
+  error?: string
+  mode?: "error"
+  message?: string
+  request_id?: string
+  latency_ms?: number
 }
 
 export function getApiBase(): string {
@@ -84,7 +89,9 @@ export async function analyzeImage(
 
     try {
       const errorBody = (await response.json()) as ApiErrorBody
-      if (errorBody.detail) {
+      if (errorBody.message) {
+        detail = errorBody.message
+      } else if (errorBody.detail) {
         detail = errorBody.detail
       }
     } catch {

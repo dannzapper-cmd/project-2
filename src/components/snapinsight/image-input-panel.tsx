@@ -335,12 +335,15 @@ export function ImageInputPanel({ className }: ImageInputPanelProps) {
       </p>
 
       {analysisError && (
-        <p
+        <div
           className="mt-3 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-center text-sm text-red-300"
           role="alert"
         >
-          {analysisError}
-        </p>
+          <span className="mb-2 inline-flex rounded-full border border-red-500/30 bg-red-500/15 px-3 py-1 text-xs font-medium text-red-200">
+            Unavailable
+          </span>
+          <p>{analysisError || "Analysis unavailable."}</p>
+        </div>
       )}
 
       {analysisResult && <MockAnalysisResultCard result={analysisResult} />}
