@@ -1,4 +1,4 @@
-import { AlertTriangle, Clock, Database, ShieldCheck, Sparkles } from "lucide-react"
+import { AlertTriangle, Clock, Database, ShieldCheck, Sparkles, Zap } from "lucide-react"
 
 import type {
   AnalysisResponse,
@@ -114,6 +114,12 @@ export function MockAnalysisResultCard({ result }: MockAnalysisResultCardProps) 
           <Clock className="h-3.5 w-3.5" />
           {result.meta.latency_ms}ms
         </span>
+        {result.cache_hit === true && (
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/30 bg-sky-500/15 px-3 py-1 text-xs font-medium text-sky-300">
+            <Zap className="h-3.5 w-3.5" />
+            Cached
+          </span>
+        )}
       </div>
 
       <div className="mb-4">

@@ -84,6 +84,27 @@ export interface AnalysisResponse {
   retrieved_at: string | null
   source_trace: string[]
   product_enrichment: ProductEnrichment | null
+  // null = caching disabled / not applicable, false = cache miss,
+  // true = served from the backend in-memory cache. Treat null and false alike.
+  cache_hit?: boolean | null
+}
+
+export interface HealthResponse {
+  status: string
+  service: string
+  mode: string
+  version: string
+  analysis_mode: string
+  gemini_configured: boolean
+  mock_fallback_allowed: boolean
+  cache_enabled: boolean
+}
+
+export interface MetricsSummaryResponse {
+  counters: Record<string, number>
+  last_latency_ms: number | null
+  average_latency_ms: number | null
+  uptime_seconds: number
 }
 
 export interface ChatMessage {
@@ -247,4 +268,22 @@ export async function compareProducts(
   }
 
   return response.json() as Promise<CompareProductsResponse>
+}
+
+export async function getHealth(signal?: AbortSignal): Promise<HealthResponse> {
+  const response = await fetch(`${getApiBase()}/health`, { signal })
+  if (!response.ok) {
+    throw new Error(`Health check failed with status ${response.status}.`)
+  }
+  return response.json() as Promise<HealthResponse>
+}
+
+export async function getMetricsSummary(
+  signal?: AbortSignal
+): Promise<MetricsSummaryResponse> {
+  const response = await fetch(`${getApiBase()}/v1/metrics/summary`, { signal })
+  if (!response.ok) {
+    throw new Error(`Metrics request failed with status ${response.status}.`)
+  }
+  return response.json() as Promise<MetricsSummaryResponse>
 }

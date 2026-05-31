@@ -9,9 +9,11 @@ import {
   analyzeImage,
   type AnalysisResponse,
 } from "@/lib/snapinsight-api"
+import { preprocessImageForUpload } from "@/lib/image-preprocess"
 import { MockAnalysisResultCard } from "@/components/snapinsight/mock-analysis-result-card"
 import { ProductChatPanel } from "@/components/snapinsight/product-chat-panel"
 import { ProductComparePanel } from "@/components/snapinsight/product-compare-panel"
+import { StatusMetricsPanel } from "@/components/snapinsight/status-metrics-panel"
 
 function getStatusLabel(
   hasImage: boolean,
@@ -31,7 +33,10 @@ interface ImageInputPanelProps {
 }
 
 const ANALYSIS_PRIVACY_COPY =
-  "Image is sent to the analysis service for processing. The service does not store your image; compare uses analysis results only."
+  "Images are processed for analysis and are not stored by SnapInsight. EXIF metadata is stripped in your browser where supported; compare uses analysis results only."
+
+const ANALYSIS_COST_COPY =
+  "Caching helps reduce repeated analysis cost and latency. Repeated identical images may return faster. No paid service beyond the configured AI model is added."
 
 function getAnalysisModeLabel(mode: AnalysisResponse["mode"]): string {
   if (mode === "gemini") return "AI Analysis"
@@ -266,7 +271,11 @@ export function ImageInputPanel({ className }: ImageInputPanelProps) {
     setAnalysisResult(null)
 
     try {
-      const result = await analyzeImage(imageFile, controller.signal)
+      // Privacy: strip EXIF / resize in-browser before the bytes leave the
+      // device. Falls back to the original file if preprocessing is unavailable.
+      const fileToSend = await preprocessImageForUpload(imageFile)
+      if (controller.signal.aborted) return
+      const result = await analyzeImage(fileToSend, controller.signal)
       if (controller.signal.aborted) return
       setAnalysisResult(result)
       registerAnalysisForCompare(result)
@@ -448,6 +457,11 @@ export function ImageInputPanel({ className }: ImageInputPanelProps) {
       <p className="text-center text-xs text-muted-foreground">
         {ANALYSIS_PRIVACY_COPY}
       </p>
+      <p className="mt-1 text-center text-xs text-muted-foreground">
+        {ANALYSIS_COST_COPY}
+      </p>
+
+      <StatusMetricsPanel latestResult={analysisResult} className="mt-4" />
 
       {analysisError && (
         <div
