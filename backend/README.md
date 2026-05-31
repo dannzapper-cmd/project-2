@@ -178,6 +178,17 @@ OpenFoodFacts is the first citation and product-enrichment source for SnapInsigh
 
 Product chat uses the current analysis result, grounding, citations, and enrichment context only; no image bytes or raw OpenFoodFacts payloads are sent. Chat is stateless and not stored server-side. Voice Lite is browser-only speech recognition/synthesis; no audio is sent to the backend. Medical diagnosis, absolute health claims, Gemini Live, server-side voice, and persistent memory are deferred.
 
+## Product Knowledge Graph (Block 18A)
+
+`POST /v1/graph/product` accepts a completed `AnalyzeImageResponse` and returns an
+ephemeral evidence graph (nodes, edges, GraphRAG Lite paths). The graph is built
+from the current analysis only — never from a hardcoded example. When
+`SNAPINSIGHT_GRAPH_ENABLED=true` and Neo4j Aura env vars are set, public product
+metadata may be synced to Neo4j; otherwise the backend uses in-memory fallback
+without failing the request. Graph nodes never include image bytes, audio,
+prompts, secrets, session IDs, or other user-identifying data. Product chat
+context is enriched with compact graph evidence paths when available.
+
 ## Overlay and Compare Mode Lite
 
 Overlay is a visual status layer, not object detection boxes. Compare Mode Lite uses only supplied analysis, grounding, and enrichment results; it does not call Gemini or OpenFoodFacts, store images/chat/compare history, or make medical or absolute health claims.

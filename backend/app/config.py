@@ -30,6 +30,10 @@ class Settings:
     cache_ttl_seconds: int
     cache_max_entries: int
     max_image_mb: int
+    graph_enabled: bool
+    neo4j_uri: str | None
+    neo4j_username: str | None
+    neo4j_password: str | None
 
 
 def _clean_optional(value: str | None) -> str | None:
@@ -120,6 +124,23 @@ def get_settings() -> Settings:
             os.getenv("SNAPINSIGHT_MAX_IMAGE_MB"),
             default=DEFAULT_MAX_IMAGE_MB,
         ),
+        graph_enabled=_parse_bool_env(
+            "SNAPINSIGHT_GRAPH_ENABLED",
+            os.getenv("SNAPINSIGHT_GRAPH_ENABLED"),
+            default=True,
+        ),
+        neo4j_uri=_clean_optional(os.getenv("NEO4J_URI")),
+        neo4j_username=_clean_optional(os.getenv("NEO4J_USERNAME")),
+        neo4j_password=_clean_optional(os.getenv("NEO4J_PASSWORD")),
+    )
+
+
+def is_neo4j_configured(settings: Settings) -> bool:
+    return bool(
+        settings.graph_enabled
+        and settings.neo4j_uri
+        and settings.neo4j_username
+        and settings.neo4j_password
     )
 
 

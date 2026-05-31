@@ -146,6 +146,65 @@ export interface CompareProductsResponse {
   latency_ms: number
 }
 
+export type GraphNodeType =
+  | "product"
+  | "brand"
+  | "category"
+  | "nutrition"
+  | "ingredient"
+  | "additive"
+  | "warning"
+  | "citation"
+  | "alternative"
+
+export type GraphBackend = "memory" | "neo4j" | "neo4j_fallback"
+
+export interface GraphNode {
+  id: string
+  type: GraphNodeType
+  label: string
+  detail: string | null
+  confidence: number | null
+  field: string | null
+  url: string | null
+}
+
+export interface GraphEdge {
+  id: string
+  source: string
+  target: string
+  relationship: string
+  label: string | null
+}
+
+export interface EvidencePathStep {
+  node_id: string
+  node_type: GraphNodeType
+  label: string
+}
+
+export interface EvidencePath {
+  id: string
+  path_type:
+    | "warning_nutrition_citation"
+    | "additive_warning_citation"
+    | "alternative_category_citation"
+    | "insight_citation"
+  summary: string
+  steps: EvidencePathStep[]
+  citation_field: string | null
+}
+
+export interface ProductGraphResponse {
+  nodes: GraphNode[]
+  edges: GraphEdge[]
+  evidence_paths: EvidencePath[]
+  graph_backend: GraphBackend
+  graph_enabled: boolean
+  request_id: string
+  latency_ms: number
+}
+
 interface ApiErrorBody {
   detail?: string
   error?: string
@@ -286,4 +345,29 @@ export async function getMetricsSummary(
     throw new Error(`Metrics request failed with status ${response.status}.`)
   }
   return response.json() as Promise<MetricsSummaryResponse>
+}
+
+export async function fetchProductGraph(
+  analysis: AnalysisResponse,
+  signal?: AbortSignal
+): Promise<ProductGraphResponse> {
+  const response = await fetch(`${getApiBase()}/v1/graph/product`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ analysis }),
+    signal,
+  })
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorDetail(
+        response,
+        `Graph request failed with status ${response.status}.`
+      )
+    )
+  }
+
+  return response.json() as Promise<ProductGraphResponse>
 }

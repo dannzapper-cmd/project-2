@@ -47,6 +47,10 @@ Required backend environment variables:
 | `SNAPINSIGHT_CACHE_TTL_SECONDS` | Defaults to `900`. |
 | `SNAPINSIGHT_CACHE_MAX_ENTRIES` | Defaults to `50`. |
 | `SNAPINSIGHT_MAX_IMAGE_MB` | Defaults to `8`. |
+| `SNAPINSIGHT_GRAPH_ENABLED` | Defaults to `true`; set `false` to skip Neo4j sync attempts. |
+| `NEO4J_URI` | Optional Neo4j Aura URI for graph persistence of public product metadata. |
+| `NEO4J_USERNAME` | Required with `NEO4J_URI` for Neo4j sync. |
+| `NEO4J_PASSWORD` | Required with `NEO4J_URI` for Neo4j sync. Keep server-side only. |
 | `PORT` | Usually injected by the backend host. |
 
 CORS behavior: when `SNAPINSIGHT_ALLOWED_ORIGINS` is not set, the backend allows
