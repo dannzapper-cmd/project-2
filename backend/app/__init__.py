@@ -1,0 +1,1 @@
+"""SnapInsight backend application package."""
