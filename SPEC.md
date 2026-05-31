@@ -41,7 +41,7 @@ Route names and UX are targets for Block 1+; not implemented in Block 0.
 | Multimodal AI | Gemini 2.5 Flash-Lite primary, Flash fallback (or equivalent) | Structured JSON output; verify quotas on [official pricing](https://ai.google.dev/gemini-api/docs/pricing) |
 | Data / RAG | Open Food Facts + optional curated subset | ODbL/DBCL attribution; cite in UI |
 | Vector store (optional) | pgvector on Supabase or similar | Verify free-tier limits on official docs before committing |
-| Observability | Langfuse or equivalent | Traces, latency, cost, retrieval quality |
+| Observability | Langfuse or equivalent | Optional backend traces, latency, retrieval/fallback signals |
 | Frontend deploy | Vercel (or equivalent) | Confirm commercial terms if product goes beyond hobby use |
 | Backend deploy | Modal, Render, Railway, Fly, or similar | Scale-to-zero preferred for cost control |
 | Caching | Perceptual hash + response cache (future) | Reduce duplicate multimodal calls |
@@ -69,7 +69,21 @@ Contextual chat uses only the current analysis, grounding, citations, and enrich
 
 ## Configuration note — caching, privacy, and metrics
 
-An in-memory LRU cache stores successful analysis responses only (hashed image-byte keys, never raw images/base64, keys never exposed), reducing repeated latency/cost. In-memory operational counters are exposed at `/v1/metrics/summary` for demo observability — not user analytics. Cache and metrics are process-local: both reset on backend restart and are not shared across workers, so they are not durable storage or observability. Client-side EXIF stripping/resizing runs before upload where supported and falls back to the original file on failure. No database, Redis, Langfuse, Sentry, auth, or persistent storage is added; deep observability and deploy QA remain deferred to Blocks 14/15.
+An in-memory LRU cache stores successful analysis responses only (hashed image-byte keys, never raw images/base64, keys never exposed), reducing repeated latency/cost. In-memory operational counters are exposed at `/v1/metrics/summary` for demo observability — not user analytics. Cache and metrics are process-local: both reset on backend restart and are not shared across workers, so they are not durable storage or observability. Client-side EXIF stripping/resizing runs before upload where supported and falls back to the original file on failure. No database, Redis, Sentry, auth, or persistent storage is added.
+
+## Configuration note — optional Langfuse LLMOps
+
+Block 18D adds optional backend Langfuse tracing controlled by
+`SNAPINSIGHT_LLMOPS_ENABLED=true` plus `LANGFUSE_PUBLIC_KEY`,
+`LANGFUSE_SECRET_KEY`, and `LANGFUSE_BASE_URL`. It traces aggregate operational
+metadata for analysis, chat, compare, and graph flows: modes, latency,
+cache hit/miss, grounding status, citation/warning counts, graph backend,
+fallback status, and high-level error type. It does not trace image/audio bytes,
+base64, filenames, EXIF, raw prompts, raw user questions, full chat contents,
+full compare payloads, OpenFoodFacts raw payloads, secrets, API keys,
+authorization headers, or PII. Langfuse is optional: disabled, missing, or
+failing configuration degrades to no-op and must not affect product responses or
+health checks.
 
 ## Configuration note — deploy readiness, evals, and smoke harness
 

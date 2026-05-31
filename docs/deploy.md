@@ -51,6 +51,11 @@ Required backend environment variables:
 | `NEO4J_URI` | Optional Neo4j Aura URI for graph persistence of public product metadata. |
 | `NEO4J_USERNAME` | Required with `NEO4J_URI` for Neo4j sync. |
 | `NEO4J_PASSWORD` | Required with `NEO4J_URI` for Neo4j sync. Keep server-side only. |
+| `SNAPINSIGHT_LLMOPS_ENABLED` | Optional; set `true` to enable Langfuse backend tracing. |
+| `LANGFUSE_PUBLIC_KEY` | Required when LLMOps tracing is enabled. Keep server-side only. |
+| `LANGFUSE_SECRET_KEY` | Required when LLMOps tracing is enabled. Keep server-side only. |
+| `LANGFUSE_BASE_URL` | Required when LLMOps tracing is enabled. |
+| `LANGFUSE_TRACING_ENVIRONMENT` | Optional safe environment label for traces/health/metrics. |
 | `PORT` | Usually injected by the backend host. |
 
 CORS behavior: when `SNAPINSIGHT_ALLOWED_ORIGINS` is not set, the backend allows
@@ -94,11 +99,15 @@ manually with the checklist in `docs/smoke-test.md`.
   chat, and compare. This PR documents that behavior but does not extend endpoint
   schemas or service code for request IDs.
 - `/health` exposes non-secret readiness signals: mode, version, Gemini key
-  presence as a boolean, mock fallback status, and cache status.
-- `/v1/metrics/summary` exposes operational counters only. It does not expose
-  product names, prompts, chat messages, image hashes, or user-specific data.
-- No Langfuse, Sentry, persistent logs, user analytics, or external
-  observability service is added in this block.
+  presence as a boolean, mock fallback status, cache status, and safe LLMOps
+  status fields.
+- `/v1/metrics/summary` exposes operational counters and safe LLMOps status only.
+  It does not expose product names, prompts, chat messages, image hashes, or
+  user-specific data.
+- Optional Langfuse tracing covers analysis, chat, compare, and graph flows with
+  aggregate metadata only. Health and metrics do not call Langfuse live, and
+  Langfuse outages must never fail Render health checks. See
+  [`llmops.md`](./llmops.md).
 
 ## Known limitations
 
