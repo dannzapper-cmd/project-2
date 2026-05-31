@@ -3,10 +3,14 @@
 import { useCallback, useMemo } from "react"
 import {
   Background,
+  BaseEdge,
   Controls,
+  EdgeLabelRenderer,
+  getBezierPath,
   MiniMap,
   ReactFlow,
   type Edge,
+  type EdgeProps,
   type Node,
   type NodeProps,
   Handle,
@@ -111,20 +115,70 @@ function EvidenceNode({ data, selected }: NodeProps<Node<EvidenceNodeData>>) {
     <div
       className={`min-w-[120px] max-w-[168px] rounded-2xl border px-3 py-2 shadow-lg backdrop-blur-sm ${palette.border} ${palette.bg} ${selected ? "ring-2 ring-violet-300/70" : ""}`}
     >
-      <Handle type="target" position={Position.Top} className="!bg-slate-400" />
+      <Handle type="target" position={Position.Top} className="!bg-muted-foreground" />
       <p className={`text-[10px] font-semibold uppercase tracking-wide ${palette.text}`}>
         {data.type}
       </p>
       <p className="mt-1 text-xs font-medium leading-snug text-foreground">
         {data.label}
       </p>
-      <Handle type="source" position={Position.Bottom} className="!bg-slate-400" />
+      <Handle type="source" position={Position.Bottom} className="!bg-muted-foreground" />
     </div>
+  )
+}
+
+function EvidenceEdge({
+  id,
+  sourceX,
+  sourceY,
+  targetX,
+  targetY,
+  sourcePosition,
+  targetPosition,
+  label,
+}: EdgeProps) {
+  const [edgePath, labelX, labelY] = getBezierPath({
+    sourceX,
+    sourceY,
+    sourcePosition,
+    targetX,
+    targetY,
+    targetPosition,
+  })
+
+  return (
+    <>
+      <BaseEdge
+        id={id}
+        path={edgePath}
+        style={{
+          stroke: "var(--primary)",
+          strokeOpacity: 0.55,
+          strokeWidth: 1.5,
+        }}
+      />
+      {label ? (
+        <EdgeLabelRenderer>
+          <div
+            className="evidence-edge-label nodrag nopan"
+            style={{
+              transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
+            }}
+          >
+            {label}
+          </div>
+        </EdgeLabelRenderer>
+      ) : null}
+    </>
   )
 }
 
 const nodeTypes = {
   evidence: EvidenceNode,
+}
+
+const edgeTypes = {
+  evidence: EvidenceEdge,
 }
 
 interface EvidenceGraphFlowProps {
@@ -159,12 +213,11 @@ export function EvidenceGraphFlow({
     () =>
       graph.edges.map((edge) => ({
         id: edge.id,
+        type: "evidence",
         source: edge.source,
         target: edge.target,
         label: edge.label ?? edge.relationship,
-        animated: edge.relationship === "grounded_in",
-        style: { stroke: "rgba(167, 139, 250, 0.55)", strokeWidth: 1.5 },
-        labelStyle: { fill: "#cbd5e1", fontSize: 10 },
+        className: edge.relationship === "grounded_in" ? "animated" : undefined,
       })),
     [graph.edges]
   )
@@ -181,11 +234,12 @@ export function EvidenceGraphFlow({
   }, [onSelectNode])
 
   return (
-    <div className="h-[min(62vh,520px)] min-h-[320px] w-full rounded-2xl border border-white/10 bg-slate-950/60">
+    <div className="evidence-graph-flow h-[min(62vh,520px)] min-h-[320px] w-full rounded-2xl border border-white/10 bg-slate-950/60">
       <ReactFlow
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         onNodeClick={handleNodeClick}
         onPaneClick={handlePaneClick}
         fitView
@@ -201,16 +255,19 @@ export function EvidenceGraphFlow({
         elementsSelectable
         proOptions={{ hideAttribution: true }}
       >
-        <Background color="rgba(148, 163, 184, 0.15)" gap={18} />
-        <Controls
-          showInteractive={false}
-          className="!rounded-xl !border-white/10 !bg-slate-900/90 !shadow-lg"
+        <Background
+          color="var(--muted-foreground)"
+          gap={18}
+          style={{ opacity: 0.18 }}
         />
+        <Controls showInteractive={false} position="bottom-left" />
         <MiniMap
           pannable
           zoomable
-          className="!rounded-xl !border-white/10 !bg-slate-900/80"
-          nodeColor={() => "#8b5cf6"}
+          position="bottom-right"
+          nodeColor={() => "var(--primary)"}
+          maskColor="color-mix(in srgb, var(--background) 72%, transparent)"
+          maskStrokeColor="var(--border)"
         />
       </ReactFlow>
     </div>
