@@ -14,7 +14,14 @@ import { EvidenceGraphPanel } from "@/components/snapinsight/evidence-graph-pane
 import { MockAnalysisResultCard } from "@/components/snapinsight/mock-analysis-result-card"
 import { ProductChatPanel } from "@/components/snapinsight/product-chat-panel"
 import { ProductComparePanel } from "@/components/snapinsight/product-compare-panel"
+import { ProductSessionPanel } from "@/components/snapinsight/product-session-panel"
 import { StatusMetricsPanel } from "@/components/snapinsight/status-metrics-panel"
+import {
+  addSnapshotToSession,
+  createProductSession,
+  MAX_SESSION_SNAPSHOTS,
+  type ProductSession,
+} from "@/lib/product-session"
 
 function getStatusLabel(
   hasImage: boolean,
@@ -130,6 +137,9 @@ export function ImageInputPanel({ className }: ImageInputPanelProps) {
     useState<AnalysisResponse | null>(null)
   const [analysisError, setAnalysisError] = useState<string | null>(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [sessionModeEnabled, setSessionModeEnabled] = useState(false)
+  const [productSession, setProductSession] = useState<ProductSession | null>(null)
+  const [sessionLimitReached, setSessionLimitReached] = useState(false)
   const {
     previewUrl,
     imageFile,
@@ -162,7 +172,26 @@ export function ImageInputPanel({ className }: ImageInputPanelProps) {
     abortActiveAnalysis()
     setAnalysisResult(null)
     setAnalysisError(null)
+    setSessionLimitReached(false)
   }, [abortActiveAnalysis])
+
+  const handleSessionModeChange = useCallback((enabled: boolean) => {
+    setSessionModeEnabled(enabled)
+    if (!enabled) {
+      setProductSession(null)
+      setSessionLimitReached(false)
+    }
+  }, [])
+
+  const handleStartSession = useCallback(() => {
+    setProductSession(createProductSession())
+    setSessionLimitReached(false)
+  }, [])
+
+  const handleEndSession = useCallback(() => {
+    setProductSession(null)
+    setSessionLimitReached(false)
+  }, [])
 
   const registerAnalysisForCompare = useCallback(
     (result: AnalysisResponse) => {
@@ -280,6 +309,22 @@ export function ImageInputPanel({ className }: ImageInputPanelProps) {
       if (controller.signal.aborted) return
       setAnalysisResult(result)
       registerAnalysisForCompare(result)
+
+      if (sessionModeEnabled && productSession) {
+        if (productSession.snapshots.length >= MAX_SESSION_SNAPSHOTS) {
+          setSessionLimitReached(true)
+        } else {
+          const addResult = addSnapshotToSession(productSession, result, {
+            localKey: crypto.randomUUID(),
+          })
+          setProductSession(addResult.session)
+          if (!addResult.added) {
+            setSessionLimitReached(true)
+          } else {
+            setSessionLimitReached(false)
+          }
+        }
+      }
     } catch (err) {
       if (isAbortError(err)) {
         return
@@ -294,7 +339,13 @@ export function ImageInputPanel({ className }: ImageInputPanelProps) {
         setIsAnalyzing(false)
       }
     }
-  }, [abortActiveAnalysis, imageFile, registerAnalysisForCompare])
+  }, [
+    abortActiveAnalysis,
+    imageFile,
+    productSession,
+    registerAnalysisForCompare,
+    sessionModeEnabled,
+  ])
 
   return (
     <div className={cn("flex flex-col", className)}>
@@ -462,6 +513,15 @@ export function ImageInputPanel({ className }: ImageInputPanelProps) {
         {ANALYSIS_COST_COPY}
       </p>
 
+      <ProductSessionPanel
+        sessionModeEnabled={sessionModeEnabled}
+        onSessionModeChange={handleSessionModeChange}
+        session={productSession}
+        onStartSession={handleStartSession}
+        onEndSession={handleEndSession}
+        sessionLimitReached={sessionLimitReached}
+      />
+
       <StatusMetricsPanel latestResult={analysisResult} className="mt-4" />
 
       {analysisError && (
@@ -479,7 +539,16 @@ export function ImageInputPanel({ className }: ImageInputPanelProps) {
       {analysisResult && (
         <>
           <MockAnalysisResultCard result={analysisResult} />
-          <EvidenceGraphPanel analysis={analysisResult} />
+          <EvidenceGraphPanel
+            analysis={analysisResult}
+            graphNote={
+              sessionModeEnabled &&
+              productSession &&
+              productSession.snapshots.length > 1
+                ? "Graph reflects the latest session snapshot."
+                : null
+            }
+          />
           <ProductComparePanel
             currentResult={analysisResult}
             productA={compareProductA}
