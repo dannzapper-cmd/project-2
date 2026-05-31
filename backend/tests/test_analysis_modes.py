@@ -131,10 +131,13 @@ def test_gemini_failure_logs_sanitized_details(monkeypatch, caplog):
     assert body["message"] == "Gemini analysis failed and mock fallback is disabled."
 
     warning_records = [
-        record for record in caplog.records if record.getMessage() == "Gemini analysis failed"
+        record
+        for record in caplog.records
+        if record.getMessage().startswith("Gemini analysis failed ")
     ]
     assert warning_records
     record = warning_records[-1]
+    rendered_message = record.getMessage()
 
     assert record.request_id
     assert record.model == model
@@ -144,8 +147,18 @@ def test_gemini_failure_logs_sanitized_details(monkeypatch, caplog):
     assert record.safe_message
     assert len(record.safe_message) <= 300
 
+    # Render-visible message contains the useful diagnostics.
+    assert "error_class=FakeGeminiError" in rendered_message
+    assert "provider_status=401" in rendered_message
+    assert "provider_code=UNAUTHENTICATED" in rendered_message
+    assert "safe_message=" in rendered_message
+
     # Safe logs must never include raw API key or image payload.
     assert api_key not in record.safe_message
     assert "fake image bytes" not in record.safe_message
     assert "data:image" not in record.safe_message
     assert base64_blob not in record.safe_message
+    assert api_key not in rendered_message
+    assert "fake image bytes" not in rendered_message
+    assert "data:image" not in rendered_message
+    assert base64_blob not in rendered_message

@@ -116,7 +116,14 @@ async def _run_analysis(
         return await _ground_response(response)
     except GeminiAnalysisError as exc:
         logger.warning(
-            "Gemini analysis failed",
+            "Gemini analysis failed request_id=%s model=%s error_class=%s "
+            "provider_status=%s provider_code=%s safe_message=%s",
+            request_id,
+            settings.gemini_model,
+            exc.error_class,
+            exc.status_code,
+            exc.code,
+            exc.safe_message,
             extra={
                 "request_id": request_id,
                 "mode": "mock_fallback"
