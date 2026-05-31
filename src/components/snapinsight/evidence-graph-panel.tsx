@@ -135,7 +135,9 @@ export function EvidenceGraphPanel({ analysis, graphNote }: EvidenceGraphPanelPr
       {expanded && (
         <div className="space-y-4 border-t border-white/5 px-5 pb-5">
           {graphNote && (
-            <p className="text-xs text-muted-foreground">{graphNote}</p>
+            <p className="rounded-lg border border-violet-500/15 bg-violet-500/5 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+              {graphNote}
+            </p>
           )}
           {loading && (
             <div className="flex h-[320px] items-center justify-center rounded-2xl border border-white/10 bg-slate-950/60">

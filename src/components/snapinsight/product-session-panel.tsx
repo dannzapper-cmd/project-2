@@ -45,12 +45,61 @@ function getGroundingLabel(status: AnalysisResponse["grounding_status"]): string
 
 function TrendIcon({ trend }: { trend: ConfidenceTrendDirection }) {
   if (trend === "up") {
-    return <ArrowUp className="h-3.5 w-3.5 text-emerald-400" aria-label="Higher confidence" />
+    return (
+      <ArrowUp
+        className="h-3.5 w-3.5 shrink-0 text-emerald-400"
+        aria-hidden
+      />
+    )
   }
   if (trend === "down") {
-    return <ArrowDown className="h-3.5 w-3.5 text-red-400" aria-label="Lower confidence" />
+    return (
+      <ArrowDown
+        className="h-3.5 w-3.5 shrink-0 text-red-400"
+        aria-hidden
+      />
+    )
   }
-  return <Minus className="h-3.5 w-3.5 text-muted-foreground" aria-label="Same or first snapshot" />
+  return (
+    <Minus
+      className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+      aria-hidden
+    />
+  )
+}
+
+function getTrendAriaLabel(trend: ConfidenceTrendDirection): string {
+  if (trend === "up") return "Higher than previous snapshot"
+  if (trend === "down") return "Lower than previous snapshot"
+  return "First snapshot or unchanged"
+}
+
+function SessionStatusBadge({
+  sessionModeEnabled,
+  session,
+}: {
+  sessionModeEnabled: boolean
+  session: ProductSession | null
+}) {
+  if (!sessionModeEnabled) {
+    return (
+      <span className="rounded-full border border-white/10 bg-slate-800/70 px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+        Off
+      </span>
+    )
+  }
+  if (!session) {
+    return (
+      <span className="rounded-full border border-white/10 bg-slate-800/70 px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+        Ready
+      </span>
+    )
+  }
+  return (
+    <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-200">
+      Active · {session.snapshots.length}/{MAX_SESSION_SNAPSHOTS}
+    </span>
+  )
 }
 
 interface ProductSessionPanelProps {
@@ -74,36 +123,52 @@ export function ProductSessionPanel({
   const atLimit = (session?.snapshots.length ?? 0) >= MAX_SESSION_SNAPSHOTS
 
   return (
-    <section className="glass-card mt-4 p-4">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Layers className="h-4 w-4 text-violet-300" />
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">Session Mode</h3>
-            <p className="text-xs text-muted-foreground">
-              Multi-scan timeline for the same product — not video streaming.
+    <section className="glass-card mt-4 p-4 sm:p-5">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex min-w-0 items-start gap-3">
+          <Layers className="mt-0.5 h-4 w-4 shrink-0 text-violet-300" />
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="text-sm font-semibold text-foreground">Session Mode</h3>
+              <SessionStatusBadge
+                sessionModeEnabled={sessionModeEnabled}
+                session={session}
+              />
+            </div>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              Compare multiple still-image scans of one product in this browser tab
+              only. Not live video, screen sharing, or saved history.
             </p>
           </div>
         </div>
-        <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
-          <span>Enable</span>
-          <input
-            type="checkbox"
-            checked={sessionModeEnabled}
-            onChange={(event) => onSessionModeChange(event.target.checked)}
-            className="h-4 w-4 rounded border-white/20 bg-slate-800 accent-violet-500"
-          />
-        </label>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={sessionModeEnabled}
+          onClick={() => onSessionModeChange(!sessionModeEnabled)}
+          className="touch-target inline-flex shrink-0 items-center justify-between gap-3 self-start rounded-full border border-white/10 bg-slate-800/80 px-4 py-2.5 text-sm font-medium text-foreground hover:bg-slate-700/80 sm:min-w-[132px]"
+        >
+          <span className="text-xs text-muted-foreground">Session Mode</span>
+          <span
+            className={
+              sessionModeEnabled
+                ? "rounded-full bg-violet-500/25 px-2 py-0.5 text-xs text-violet-200"
+                : "rounded-full bg-slate-700/80 px-2 py-0.5 text-xs text-muted-foreground"
+            }
+          >
+            {sessionModeEnabled ? "On" : "Off"}
+          </span>
+        </button>
       </div>
 
       {sessionModeEnabled && (
         <div className="space-y-4">
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
             {!session ? (
               <button
                 type="button"
                 onClick={onStartSession}
-                className="inline-flex touch-target items-center gap-2 rounded-full border border-violet-500/30 bg-violet-500/15 px-4 py-2 text-sm font-medium text-violet-200 hover:bg-violet-500/25"
+                className="touch-target inline-flex w-full items-center justify-center gap-2 rounded-full border border-violet-500/30 bg-violet-500/15 px-4 py-3 text-sm font-medium text-violet-200 hover:bg-violet-500/25 sm:w-auto"
               >
                 <Play className="h-4 w-4" />
                 Start session
@@ -112,24 +177,39 @@ export function ProductSessionPanel({
               <button
                 type="button"
                 onClick={onEndSession}
-                className="inline-flex touch-target items-center gap-2 rounded-full border border-white/10 bg-slate-800/80 px-4 py-2 text-sm font-medium text-foreground hover:bg-slate-700/80"
+                className="touch-target inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/10 bg-slate-800/80 px-4 py-3 text-sm font-medium text-foreground hover:bg-slate-700/80 sm:w-auto"
               >
                 <Square className="h-4 w-4" />
                 End session
               </button>
             )}
+            {session && (
+              <p className="self-center text-xs leading-relaxed text-muted-foreground sm:max-w-[280px]">
+                {session.snapshots.length === 0
+                  ? "Capture or upload, then tap Analyze image to record snapshot #1."
+                  : "Each new analysis adds another snapshot (same product)."}
+              </p>
+            )}
           </div>
 
           {sessionLimitReached && (
-            <p className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
-              Session limit reached. Start a new session.
-            </p>
+            <div
+              className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-3 text-sm text-amber-100"
+              role="status"
+            >
+              <p className="font-medium">Session limit reached. Start a new session.</p>
+              <p className="mt-1 text-xs leading-relaxed text-amber-100/85">
+                Timeline is full ({MAX_SESSION_SNAPSHOTS} snapshots). You can still
+                analyze images below—the result card, chat, compare, and graph use
+                the latest analysis only.
+              </p>
+            </div>
           )}
 
           {session && summary.snapshotCount > 0 && (
-            <div className="rounded-2xl border border-white/5 bg-slate-800/40 p-3">
-              <p className="mono-label mb-2 text-muted-foreground">Session summary</p>
-              <div className="grid gap-2 text-sm sm:grid-cols-2">
+            <div className="rounded-2xl border border-white/5 bg-slate-800/40 p-3 sm:p-4">
+              <p className="mono-label mb-3 text-muted-foreground">Session summary</p>
+              <div className="grid gap-3 text-sm sm:grid-cols-2">
                 <p className="text-muted-foreground">
                   Snapshots:{" "}
                   <span className="font-medium text-foreground">
@@ -141,8 +221,34 @@ export function ProductSessionPanel({
                   Best match:{" "}
                   <span className="font-medium text-foreground">
                     {summary.bestProductName ?? "—"}
+                    {summary.bestConfidenceScore !== null && (
+                      <span className="font-normal text-muted-foreground">
+                        {" "}
+                        ({Math.round(summary.bestConfidenceScore * 100)}%)
+                      </span>
+                    )}
                   </span>
                 </p>
+                <div className="text-muted-foreground sm:col-span-2">
+                  <span>Confidence trend: </span>
+                  <span
+                    className="mt-1 inline-flex flex-wrap items-center gap-1.5"
+                    aria-label="Confidence trend per snapshot"
+                  >
+                    {summary.confidenceTrends.map((trend, index) => (
+                      <span
+                        key={`trend-${index}`}
+                        className="inline-flex items-center gap-0.5 rounded-full border border-white/10 bg-slate-900/60 px-1.5 py-0.5"
+                        title={getTrendAriaLabel(trend)}
+                      >
+                        <span className="text-[10px] text-muted-foreground">
+                          #{index + 1}
+                        </span>
+                        <TrendIcon trend={trend} />
+                      </span>
+                    ))}
+                  </span>
+                </div>
                 <p className="text-muted-foreground sm:col-span-2">
                   Grounding seen:{" "}
                   <span className="font-medium text-foreground">
@@ -167,7 +273,7 @@ export function ProductSessionPanel({
                 </p>
               </div>
               {summary.latestWarnings.length > 0 && (
-                <p className="mt-2 text-xs text-amber-200/90">
+                <p className="mt-3 text-xs leading-relaxed text-amber-200/90">
                   Latest warnings: {summary.latestWarnings.join(" · ")}
                 </p>
               )}
@@ -177,53 +283,65 @@ export function ProductSessionPanel({
           {session && session.snapshots.length > 0 && (
             <div>
               <p className="mono-label mb-2 text-muted-foreground">Snapshot timeline</p>
-              <ol className="space-y-2">
+              <ol className="max-h-[min(50vh,360px)] space-y-2 overflow-y-auto pr-1">
                 {session.snapshots.map((snapshot, index) => {
                   const trend = summary.confidenceTrends[index] ?? "neutral"
                   const analysis = snapshot.analysis
+                  const isLatest = index === session.snapshots.length - 1
                   return (
                     <li
                       key={snapshot.localKey}
-                      className="rounded-2xl border border-white/5 bg-slate-900/50 px-3 py-3"
+                      className={
+                        isLatest
+                          ? "rounded-2xl border border-violet-500/25 bg-violet-500/5 px-3 py-3 sm:px-4"
+                          : "rounded-2xl border border-white/5 bg-slate-900/50 px-3 py-3 sm:px-4"
+                      }
                     >
-                      <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs font-medium text-violet-200">
-                            Snapshot #{snapshot.order}
-                            <span className="ml-2 font-normal text-muted-foreground">
+                          <div className="flex flex-col gap-0.5 sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-2">
+                            <p className="text-xs font-semibold text-violet-200">
+                              Snapshot #{snapshot.order}
+                              {isLatest && (
+                                <span className="ml-2 font-medium text-violet-300/90">
+                                  Latest
+                                </span>
+                              )}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground">
                               {formatSnapshotTime(snapshot.capturedAtMs)}
-                            </span>
-                          </p>
-                          <p className="mt-1 truncate text-sm font-medium text-foreground">
+                            </p>
+                          </div>
+                          <p className="mt-1.5 break-words text-sm font-medium leading-snug text-foreground">
                             {analysis.product.display_name}
                           </p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="mt-0.5 break-words text-xs text-muted-foreground">
                             {analysis.product.category}
                           </p>
                         </div>
-                        <TrendIcon trend={trend} />
+                        <div
+                          className="flex shrink-0 flex-col items-center gap-0.5"
+                          title={getTrendAriaLabel(trend)}
+                        >
+                          <TrendIcon trend={trend} />
+                        </div>
                       </div>
-                      <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
-                        <span className="rounded-full border border-white/10 bg-slate-800/70 px-2 py-0.5 text-muted-foreground">
+                      <div className="mt-2.5 flex flex-wrap gap-1.5 text-[11px] leading-tight">
+                        <span className="rounded-full border border-white/10 bg-slate-800/70 px-2.5 py-1 text-muted-foreground">
                           {formatConfidence(analysis)}
                         </span>
-                        <span className="rounded-full border border-white/10 bg-slate-800/70 px-2 py-0.5 text-muted-foreground">
+                        <span className="rounded-full border border-white/10 bg-slate-800/70 px-2.5 py-1 text-muted-foreground">
                           {getGroundingLabel(analysis.grounding_status)}
                         </span>
-                        <span className="rounded-full border border-white/10 bg-slate-800/70 px-2 py-0.5 text-muted-foreground">
+                        <span className="rounded-full border border-white/10 bg-slate-800/70 px-2.5 py-1 text-muted-foreground">
                           {analysis.warnings.length} warning
                           {analysis.warnings.length === 1 ? "" : "s"}
                         </span>
-                        <span className="rounded-full border border-white/10 bg-slate-800/70 px-2 py-0.5 text-muted-foreground">
+                        <span className="rounded-full border border-white/10 bg-slate-800/70 px-2.5 py-1 text-muted-foreground">
                           {getModeLabel(analysis.mode)}
                           {analysis.cache_hit === true ? " · cached" : ""}
                         </span>
                       </div>
-                      {index === session.snapshots.length - 1 && (
-                        <p className="mt-2 text-[11px] text-violet-300/90">
-                          Active for result card, chat, compare, and graph.
-                        </p>
-                      )}
                     </li>
                   )
                 })}
@@ -232,9 +350,13 @@ export function ProductSessionPanel({
           )}
 
           {session && session.snapshots.length === 0 && (
-            <p className="text-sm text-muted-foreground">
-              Session started. Analyze an image to add snapshot #1.
-            </p>
+            <div className="rounded-2xl border border-dashed border-white/10 bg-slate-900/40 px-4 py-4 text-center">
+              <p className="text-sm font-medium text-foreground">Session active</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                No snapshots yet. Use the camera or upload flow above, then analyze
+                to add snapshot #1. Nothing is stored after you leave this page.
+              </p>
+            </div>
           )}
         </div>
       )}

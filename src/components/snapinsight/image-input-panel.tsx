@@ -542,8 +542,10 @@ export function ImageInputPanel({ className }: ImageInputPanelProps) {
           <EvidenceGraphPanel
             analysis={analysisResult}
             graphNote={
-              productSession && productSession.snapshots.length > 0
-                ? "Graph reflects latest snapshot."
+              sessionModeEnabled &&
+              productSession &&
+              productSession.snapshots.length > 1
+                ? "Graph reflects the latest session snapshot."
                 : null
             }
           />
