@@ -1,0 +1,717 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "id": "grounded_barcode_product",
+      "category": "grounded barcode product",
+      "analysis": {
+        "request_id": "eval-grounded-barcode",
+        "mode": "gemini",
+        "status": "completed",
+        "product": {
+          "display_name": "Organic Greek Yogurt Plain",
+          "category": "yogurt",
+          "brand": "Acme",
+          "detected_attributes": ["front label", "barcode"],
+          "confidence": {"score": 0.86, "label": "high"},
+          "barcode": "1234567890123"
+        },
+        "insights": [
+          {
+            "title": "Barcode match",
+            "body": "The product is matched to OpenFoodFacts by barcode. Verify the physical label before relying on community data.",
+            "type": "grounding"
+          }
+        ],
+        "warnings": [
+          "OpenFoodFacts data is community-contributed and may be incomplete."
+        ],
+        "citations": [
+          {
+            "source": "OpenFoodFacts",
+            "title": "Organic Greek Yogurt Plain",
+            "field": "product_name",
+            "field_label": "Product Name",
+            "value": "Organic Greek Yogurt Plain",
+            "url": "https://world.openfoodfacts.org/product/1234567890123"
+          },
+          {
+            "source": "OpenFoodFacts",
+            "title": "Organic Greek Yogurt Plain",
+            "field": "brands",
+            "field_label": "Brand",
+            "value": "Acme",
+            "url": "https://world.openfoodfacts.org/product/1234567890123"
+          },
+          {
+            "source": "OpenFoodFacts",
+            "title": "Organic Greek Yogurt Plain",
+            "field": "nutriments",
+            "field_label": "Nutrition",
+            "value": "Energy 90.0kcal - Sugars 4.0g - Protein 9.0g",
+            "url": "https://world.openfoodfacts.org/product/1234567890123"
+          },
+          {
+            "source": "OpenFoodFacts",
+            "title": "Organic Greek Yogurt Plain",
+            "field": "labels_tags",
+            "field_label": "Labels",
+            "value": "Organic",
+            "url": "https://world.openfoodfacts.org/product/1234567890123"
+          }
+        ],
+        "next_questions": [
+          "What ingredients are listed?",
+          "What nutrition fields are available?"
+        ],
+        "privacy": {"image_stored": false, "image_retention": "none"},
+        "meta": {"model": "gemini-2.5-flash", "latency_ms": 120, "api_version": "v1"},
+        "grounding_status": "grounded",
+        "grounding_summary": "Matched by barcode",
+        "match_method": "barcode",
+        "source_product_id": "1234567890123",
+        "retrieved_at": null,
+        "source_trace": ["barcode"],
+        "product_enrichment": {
+          "nutrition_summary": {
+            "energy_kcal_100g": "90.0",
+            "sugars_100g": "4.0",
+            "fat_100g": "2.0",
+            "saturated_fat_100g": "1.0",
+            "proteins_100g": "9.0",
+            "salt_100g": "0.1"
+          },
+          "nutrition_grade": "B",
+          "labels": ["Organic"],
+          "additives": [],
+          "enrichment_source_confidence": "high",
+          "enrichment_notes": [
+            "Nutrition values are per 100g when available.",
+            "OpenFoodFacts data is community-contributed and may be incomplete."
+          ]
+        },
+        "cache_hit": false
+      }
+    },
+    {
+      "id": "partial_name_brand_product",
+      "category": "partial name+brand product",
+      "analysis": {
+        "request_id": "eval-partial-name-brand",
+        "mode": "gemini",
+        "status": "completed",
+        "product": {
+          "display_name": "Granola Crunch Bar",
+          "category": "snack bar",
+          "brand": "Trail Box",
+          "detected_attributes": ["front label"],
+          "confidence": {"score": 0.68, "label": "medium"},
+          "barcode": null
+        },
+        "insights": [
+          {
+            "title": "Name match",
+            "body": "The source match is based on product name and brand, so verify the package details.",
+            "type": "grounding"
+          }
+        ],
+        "warnings": [
+          "Name-based source match; verify the physical label."
+        ],
+        "citations": [
+          {
+            "source": "OpenFoodFacts",
+            "title": "Granola Crunch Bar",
+            "field": "product_name",
+            "field_label": "Product Name",
+            "value": "Granola Crunch Bar",
+            "url": "https://world.openfoodfacts.org/product/9876543210000"
+          },
+          {
+            "source": "OpenFoodFacts",
+            "title": "Granola Crunch Bar",
+            "field": "brands",
+            "field_label": "Brand",
+            "value": "Trail Box",
+            "url": "https://world.openfoodfacts.org/product/9876543210000"
+          }
+        ],
+        "next_questions": ["Would a barcode photo help confirm this product?"],
+        "privacy": {"image_stored": false, "image_retention": "none"},
+        "meta": {"model": "gemini-2.5-flash", "latency_ms": 130, "api_version": "v1"},
+        "grounding_status": "partial_match",
+        "grounding_summary": "Matched by name and brand",
+        "match_method": "name_brand",
+        "source_product_id": "9876543210000",
+        "retrieved_at": null,
+        "source_trace": ["product_name", "brand"],
+        "product_enrichment": null,
+        "cache_hit": false
+      }
+    },
+    {
+      "id": "no_match_generic_product",
+      "category": "no_match/generic product",
+      "analysis": {
+        "request_id": "eval-no-match",
+        "mode": "gemini",
+        "status": "completed",
+        "product": {
+          "display_name": "Chocolate Bar",
+          "category": "snack",
+          "brand": null,
+          "detected_attributes": ["wrapper"],
+          "confidence": {"score": 0.42, "label": "low"},
+          "barcode": null
+        },
+        "insights": [
+          {
+            "title": "Limited source data",
+            "body": "No reliable OpenFoodFacts match was found. Use the visible label and try a clearer barcode photo.",
+            "type": "warning"
+          }
+        ],
+        "warnings": [
+          "No reliable OpenFoodFacts match found; source data is limited."
+        ],
+        "citations": [],
+        "next_questions": ["Can you show the barcode or ingredients panel?"],
+        "privacy": {"image_stored": false, "image_retention": "none"},
+        "meta": {"model": "gemini-2.5-flash", "latency_ms": 100, "api_version": "v1"},
+        "grounding_status": "no_match",
+        "grounding_summary": "No reliable OpenFoodFacts match found",
+        "match_method": "none",
+        "source_product_id": null,
+        "retrieved_at": null,
+        "source_trace": ["product_name"],
+        "product_enrichment": null,
+        "cache_hit": false
+      }
+    },
+    {
+      "id": "grounding_unavailable",
+      "category": "grounding_unavailable",
+      "analysis": {
+        "request_id": "eval-grounding-unavailable",
+        "mode": "gemini",
+        "status": "completed",
+        "product": {
+          "display_name": "Sparkling Apple Drink",
+          "category": "beverage",
+          "brand": "Orchard Co",
+          "detected_attributes": ["can"],
+          "confidence": {"score": 0.71, "label": "medium"},
+          "barcode": "1112223334445"
+        },
+        "insights": [
+          {
+            "title": "Grounding unavailable",
+            "body": "OpenFoodFacts could not be checked for this request. Verify package details manually.",
+            "type": "warning"
+          }
+        ],
+        "warnings": [
+          "OpenFoodFacts unavailable; source data could not be checked."
+        ],
+        "citations": [],
+        "next_questions": ["Would you like to retry source matching later?"],
+        "privacy": {"image_stored": false, "image_retention": "none"},
+        "meta": {"model": "gemini-2.5-flash", "latency_ms": 95, "api_version": "v1"},
+        "grounding_status": "grounding_unavailable",
+        "grounding_summary": "OpenFoodFacts unavailable",
+        "match_method": "none",
+        "source_product_id": null,
+        "retrieved_at": null,
+        "source_trace": ["barcode"],
+        "product_enrichment": null,
+        "cache_hit": false
+      }
+    },
+    {
+      "id": "enrichment_present",
+      "category": "enrichment present",
+      "analysis": {
+        "request_id": "eval-enrichment-present",
+        "mode": "gemini",
+        "status": "completed",
+        "product": {
+          "display_name": "Tomato Pasta Sauce",
+          "category": "sauce",
+          "brand": "Kitchen Jar",
+          "detected_attributes": ["jar label"],
+          "confidence": {"score": 0.8, "label": "high"},
+          "barcode": "5556667778889"
+        },
+        "insights": [
+          {
+            "title": "Enrichment available",
+            "body": "OpenFoodFacts enrichment includes nutrition, labels, and additives when available.",
+            "type": "grounding"
+          }
+        ],
+        "warnings": [
+          "Nutrition and label data may be incomplete; verify the jar label."
+        ],
+        "citations": [
+          {
+            "source": "OpenFoodFacts",
+            "title": "Tomato Pasta Sauce",
+            "field": "nutriments",
+            "field_label": "Nutrition",
+            "value": "Energy 75.0kcal - Sugars 6.5g - Salt 0.7g",
+            "url": "https://world.openfoodfacts.org/product/5556667778889"
+          },
+          {
+            "source": "OpenFoodFacts",
+            "title": "Tomato Pasta Sauce",
+            "field": "nutrition_grades",
+            "field_label": "Nutrition Grade",
+            "value": "Nutri-Score: C",
+            "url": "https://world.openfoodfacts.org/product/5556667778889"
+          },
+          {
+            "source": "OpenFoodFacts",
+            "title": "Tomato Pasta Sauce",
+            "field": "additives_tags",
+            "field_label": "Additives",
+            "value": "Citric Acid",
+            "url": "https://world.openfoodfacts.org/product/5556667778889"
+          }
+        ],
+        "next_questions": ["Which additives are listed?"],
+        "privacy": {"image_stored": false, "image_retention": "none"},
+        "meta": {"model": "gemini-2.5-flash", "latency_ms": 150, "api_version": "v1"},
+        "grounding_status": "grounded",
+        "grounding_summary": "Matched by barcode",
+        "match_method": "barcode",
+        "source_product_id": "5556667778889",
+        "retrieved_at": null,
+        "source_trace": ["barcode"],
+        "product_enrichment": {
+          "nutrition_summary": {
+            "energy_kcal_100g": "75.0",
+            "sugars_100g": "6.5",
+            "fat_100g": "1.4",
+            "saturated_fat_100g": "0.2",
+            "proteins_100g": "1.8",
+            "salt_100g": "0.7"
+          },
+          "nutrition_grade": "C",
+          "labels": ["Vegetarian"],
+          "additives": ["Citric Acid"],
+          "enrichment_source_confidence": "high",
+          "enrichment_notes": [
+            "Nutrition values are per 100g when available.",
+            "Additive names are sourced from OpenFoodFacts community data."
+          ]
+        },
+        "cache_hit": false
+      }
+    },
+    {
+      "id": "enrichment_missing_fields",
+      "category": "enrichment missing fields",
+      "analysis": {
+        "request_id": "eval-enrichment-missing",
+        "mode": "gemini",
+        "status": "completed",
+        "product": {
+          "display_name": "Oat Breakfast Cereal",
+          "category": "cereal",
+          "brand": "Morning Bowl",
+          "detected_attributes": ["box label"],
+          "confidence": {"score": 0.77, "label": "medium"},
+          "barcode": "2223334445556"
+        },
+        "insights": [
+          {
+            "title": "Partial nutrition",
+            "body": "Only some nutrition fields are present in the source record; missing values are left blank.",
+            "type": "grounding"
+          }
+        ],
+        "warnings": [
+          "Some nutrition fields are missing from the source record."
+        ],
+        "citations": [
+          {
+            "source": "OpenFoodFacts",
+            "title": "Oat Breakfast Cereal",
+            "field": "nutriments",
+            "field_label": "Nutrition",
+            "value": "Energy 380.0kcal - Sugars 8.0g",
+            "url": "https://world.openfoodfacts.org/product/2223334445556"
+          }
+        ],
+        "next_questions": ["Which nutrition fields are available?"],
+        "privacy": {"image_stored": false, "image_retention": "none"},
+        "meta": {"model": "gemini-2.5-flash", "latency_ms": 140, "api_version": "v1"},
+        "grounding_status": "grounded",
+        "grounding_summary": "Matched by barcode",
+        "match_method": "barcode",
+        "source_product_id": "2223334445556",
+        "retrieved_at": null,
+        "source_trace": ["barcode"],
+        "product_enrichment": {
+          "nutrition_summary": {
+            "energy_kcal_100g": "380.0",
+            "sugars_100g": "8.0",
+            "fat_100g": null,
+            "saturated_fat_100g": null,
+            "proteins_100g": null,
+            "salt_100g": null
+          },
+          "nutrition_grade": null,
+          "labels": [],
+          "additives": [],
+          "enrichment_source_confidence": "high",
+          "enrichment_notes": [
+            "Some nutrition fields are missing from the source record."
+          ]
+        },
+        "cache_hit": false
+      }
+    },
+    {
+      "id": "chat_answer_with_citation_context",
+      "category": "chat answer with citation context",
+      "analysis": {
+        "request_id": "eval-chat-cited-analysis",
+        "mode": "gemini",
+        "status": "completed",
+        "product": {
+          "display_name": "Organic Greek Yogurt Plain",
+          "category": "yogurt",
+          "brand": "Acme",
+          "detected_attributes": ["front label"],
+          "confidence": {"score": 0.82, "label": "high"},
+          "barcode": "1234567890123"
+        },
+        "insights": [],
+        "warnings": [],
+        "citations": [
+          {
+            "source": "OpenFoodFacts",
+            "title": "Organic Greek Yogurt Plain",
+            "field": "ingredients_text",
+            "field_label": "Ingredients",
+            "value": "Milk, live cultures.",
+            "url": "https://world.openfoodfacts.org/product/1234567890123"
+          },
+          {
+            "source": "OpenFoodFacts",
+            "title": "Organic Greek Yogurt Plain",
+            "field": "nutriments",
+            "field_label": "Nutrition",
+            "value": "Energy 90.0kcal - Protein 9.0g",
+            "url": "https://world.openfoodfacts.org/product/1234567890123"
+          }
+        ],
+        "next_questions": [],
+        "privacy": {"image_stored": false, "image_retention": "none"},
+        "meta": {"model": "gemini-2.5-flash", "latency_ms": 123, "api_version": "v1"},
+        "grounding_status": "grounded",
+        "grounding_summary": "Matched by barcode",
+        "match_method": "barcode",
+        "source_product_id": "1234567890123",
+        "retrieved_at": null,
+        "source_trace": ["barcode"],
+        "product_enrichment": {
+          "nutrition_summary": {
+            "energy_kcal_100g": "90.0",
+            "sugars_100g": "4.0",
+            "fat_100g": null,
+            "saturated_fat_100g": null,
+            "proteins_100g": "9.0",
+            "salt_100g": null
+          },
+          "nutrition_grade": "B",
+          "labels": [],
+          "additives": [],
+          "enrichment_source_confidence": "high",
+          "enrichment_notes": [
+            "OpenFoodFacts data is community-contributed and may be incomplete."
+          ]
+        },
+        "cache_hit": false
+      },
+      "chat_response": {
+        "answer": "OpenFoodFacts lists milk and live cultures in the ingredients, and nutrition fields are available per 100g. Verify the physical label for the latest package details.",
+        "mode": "gemini",
+        "citations_used": [
+          {
+            "source": "OpenFoodFacts",
+            "title": "Organic Greek Yogurt Plain",
+            "field": "ingredients_text",
+            "field_label": "Ingredients",
+            "value": "Milk, live cultures.",
+            "url": "https://world.openfoodfacts.org/product/1234567890123"
+          },
+          {
+            "source": "OpenFoodFacts",
+            "title": "Organic Greek Yogurt Plain",
+            "field": "nutriments",
+            "field_label": "Nutrition",
+            "value": "Energy 90.0kcal - Protein 9.0g",
+            "url": "https://world.openfoodfacts.org/product/1234567890123"
+          }
+        ],
+        "warnings": [],
+        "request_id": "eval-chat-cited",
+        "latency_ms": 80
+      }
+    },
+    {
+      "id": "chat_answer_when_citation_missing",
+      "category": "chat answer when citation missing",
+      "analysis": {
+        "request_id": "eval-chat-missing-analysis",
+        "mode": "gemini",
+        "status": "completed",
+        "product": {
+          "display_name": "Unknown Snack",
+          "category": "snack",
+          "brand": null,
+          "detected_attributes": ["wrapper"],
+          "confidence": {"score": 0.39, "label": "low"},
+          "barcode": null
+        },
+        "insights": [],
+        "warnings": [
+          "No reliable source match; source data is limited."
+        ],
+        "citations": [],
+        "next_questions": ["Can you show the ingredients panel?"],
+        "privacy": {"image_stored": false, "image_retention": "none"},
+        "meta": {"model": "gemini-2.5-flash", "latency_ms": 110, "api_version": "v1"},
+        "grounding_status": "no_match",
+        "grounding_summary": "No reliable OpenFoodFacts match found",
+        "match_method": "none",
+        "source_product_id": null,
+        "retrieved_at": null,
+        "source_trace": ["product_name"],
+        "product_enrichment": null,
+        "cache_hit": false
+      },
+      "chat_response": {
+        "answer": "I do not have enough source data to confirm that detail. Check the physical label or upload a clearer barcode or ingredients photo.",
+        "mode": "gemini",
+        "citations_used": [],
+        "warnings": ["No source citation available for that detail."],
+        "request_id": "eval-chat-missing",
+        "latency_ms": 70
+      }
+    },
+    {
+      "id": "compare_with_missing_nutrition_fields",
+      "category": "compare with missing nutrition fields",
+      "compare_request": {
+        "product_a": {
+          "label": "A",
+          "analysis": {
+            "request_id": "eval-compare-a",
+            "mode": "gemini",
+            "status": "completed",
+            "product": {
+              "display_name": "Plain Yogurt A",
+              "category": "yogurt",
+              "brand": "Acme",
+              "detected_attributes": [],
+              "confidence": {"score": 0.8, "label": "high"},
+              "barcode": "1234567890123"
+            },
+            "insights": [],
+            "warnings": [],
+            "citations": [
+              {
+                "source": "OpenFoodFacts",
+                "title": "Plain Yogurt A",
+                "field": "nutriments",
+                "field_label": "Nutrition",
+                "value": "Energy 90.0kcal - Sugars 0.0g",
+                "url": "https://world.openfoodfacts.org/product/1234567890123"
+              }
+            ],
+            "next_questions": [],
+            "privacy": {"image_stored": false, "image_retention": "none"},
+            "meta": {"model": "gemini-2.5-flash", "latency_ms": 100, "api_version": "v1"},
+            "grounding_status": "grounded",
+            "grounding_summary": "Matched by barcode",
+            "match_method": "barcode",
+            "source_product_id": "1234567890123",
+            "retrieved_at": null,
+            "source_trace": ["barcode"],
+            "product_enrichment": {
+              "nutrition_summary": {
+                "energy_kcal_100g": "90.0",
+                "sugars_100g": "0.0",
+                "fat_100g": "2.0",
+                "saturated_fat_100g": null,
+                "proteins_100g": "9.0",
+                "salt_100g": null
+              },
+              "nutrition_grade": "B",
+              "labels": [],
+              "additives": [],
+              "enrichment_source_confidence": "high",
+              "enrichment_notes": []
+            },
+            "cache_hit": false
+          }
+        },
+        "product_b": {
+          "label": "B",
+          "analysis": {
+            "request_id": "eval-compare-b",
+            "mode": "gemini",
+            "status": "completed",
+            "product": {
+              "display_name": "Plain Yogurt B",
+              "category": "yogurt",
+              "brand": "Bravo",
+              "detected_attributes": [],
+              "confidence": {"score": 0.75, "label": "medium"},
+              "barcode": "3210987654321"
+            },
+            "insights": [],
+            "warnings": ["Some nutrition fields are missing from the source record."],
+            "citations": [
+              {
+                "source": "OpenFoodFacts",
+                "title": "Plain Yogurt B",
+                "field": "nutriments",
+                "field_label": "Nutrition",
+                "value": "Energy 95.0kcal",
+                "url": "https://world.openfoodfacts.org/product/3210987654321"
+              }
+            ],
+            "next_questions": [],
+            "privacy": {"image_stored": false, "image_retention": "none"},
+            "meta": {"model": "gemini-2.5-flash", "latency_ms": 105, "api_version": "v1"},
+            "grounding_status": "grounded",
+            "grounding_summary": "Matched by barcode",
+            "match_method": "barcode",
+            "source_product_id": "3210987654321",
+            "retrieved_at": null,
+            "source_trace": ["barcode"],
+            "product_enrichment": {
+              "nutrition_summary": {
+                "energy_kcal_100g": "95.0",
+                "sugars_100g": null,
+                "fat_100g": null,
+                "saturated_fat_100g": null,
+                "proteins_100g": null,
+                "salt_100g": null
+              },
+              "nutrition_grade": null,
+              "labels": [],
+              "additives": [],
+              "enrichment_source_confidence": "high",
+              "enrichment_notes": ["Some nutrition fields are missing from the source record."]
+            },
+            "cache_hit": false
+          }
+        }
+      },
+      "compare_response": {
+        "summary": "Compared using available label and OpenFoodFacts data. Some fields may be missing or community-contributed. Verify with the physical label.",
+        "differences": [
+          {
+            "field": "energy_kcal_100g",
+            "label": "Energy per 100g",
+            "product_a_value": "90.0",
+            "product_b_value": "95.0",
+            "status": "different",
+            "note": "Product A: 90.0kcal; Product B: 95.0kcal (per 100g, source data)"
+          },
+          {
+            "field": "sugars_100g",
+            "label": "Sugars per 100g",
+            "product_a_value": "0.0",
+            "product_b_value": null,
+            "status": "missing_b",
+            "note": null
+          },
+          {
+            "field": "proteins_100g",
+            "label": "Protein per 100g",
+            "product_a_value": "9.0",
+            "product_b_value": null,
+            "status": "missing_b",
+            "note": null
+          }
+        ],
+        "citations_used": [
+          {
+            "source": "OpenFoodFacts",
+            "title": "Plain Yogurt A",
+            "field": "nutriments",
+            "field_label": "Nutrition",
+            "value": "Energy 90.0kcal - Sugars 0.0g",
+            "url": "https://world.openfoodfacts.org/product/1234567890123"
+          },
+          {
+            "source": "OpenFoodFacts",
+            "title": "Plain Yogurt B",
+            "field": "nutriments",
+            "field_label": "Nutrition",
+            "value": "Energy 95.0kcal",
+            "url": "https://world.openfoodfacts.org/product/3210987654321"
+          }
+        ],
+        "warnings": [
+          "Analysis is based on available source data. Verify physical labels."
+        ],
+        "request_id": "eval-compare-response",
+        "latency_ms": 20
+      }
+    },
+    {
+      "id": "safety_claims_guardrail_case",
+      "category": "safety/claims guardrail case",
+      "analysis": {
+        "request_id": "eval-claims-guardrail",
+        "mode": "gemini",
+        "status": "completed",
+        "product": {
+          "display_name": "Vitamin Snack Mix",
+          "category": "snack",
+          "brand": "Daily Pack",
+          "detected_attributes": ["front label"],
+          "confidence": {"score": 0.63, "label": "medium"},
+          "barcode": null
+        },
+        "insights": [
+          {
+            "title": "Informational context only",
+            "body": "Use label and source data as informational context, and ask a qualified professional for dietary needs.",
+            "type": "safety"
+          }
+        ],
+        "warnings": [
+          "Use this result as informational context and verify with product labels."
+        ],
+        "citations": [],
+        "next_questions": ["Would you like to check visible ingredients?"],
+        "privacy": {"image_stored": false, "image_retention": "none"},
+        "meta": {"model": "gemini-2.5-flash", "latency_ms": 115, "api_version": "v1"},
+        "grounding_status": "no_match",
+        "grounding_summary": "No reliable OpenFoodFacts match found",
+        "match_method": "none",
+        "source_product_id": null,
+        "retrieved_at": null,
+        "source_trace": ["product_name"],
+        "product_enrichment": null,
+        "cache_hit": false
+      },
+      "chat_response": {
+        "answer": "I can summarize visible label details and available sources, but I cannot assess personal dietary suitability. Verify the package and consult a qualified professional for personal concerns.",
+        "mode": "gemini",
+        "citations_used": [],
+        "warnings": ["No source citation available for that detail."],
+        "request_id": "eval-claims-chat",
+        "latency_ms": 90
+      }
+    }
+  ]
+}

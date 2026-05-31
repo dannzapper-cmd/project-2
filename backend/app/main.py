@@ -34,7 +34,6 @@ API_VERSION = "v1"
 OVERSIZED_IMAGE_MESSAGE = "Image is too large. Please upload a smaller image."
 DEFAULT_ALLOWED_ORIGINS = [
     "http://localhost:3000",
-    "http://127.0.0.1:3000",
 ]
 logger = logging.getLogger(__name__)
 

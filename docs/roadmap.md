@@ -92,11 +92,17 @@ Delivery is organized into **blocks**. Block count is not rigid: blocks may be c
 
 ## Block 14 — Evals / observability
 
-- Langfuse (or equivalent) traces, golden-set evals, regression checks.
+- Minimal offline golden-set evals and regression checks for core behavior.
+- **Block 14/15 status:** Deploy readiness docs, env documentation, offline
+  fixture evals, and smoke harness added. External observability services
+  (Langfuse/Sentry), final QA, and final polish remain out of scope.
 
 ## Block 15 — Deploy
 
 - Production HTTPS demo on Vercel + backend host; environment documentation.
+- **Block 14/15 status:** Frontend is Vercel-compatible and backend is
+  Render/Railway-compatible via documented start command and env vars. This PR
+  does not perform the live deploy or hardcode production domains.
 
 ## Block 16 — Polish
 

@@ -71,6 +71,17 @@ Contextual chat uses only the current analysis, grounding, citations, and enrich
 
 An in-memory LRU cache stores successful analysis responses only (hashed image-byte keys, never raw images/base64, keys never exposed), reducing repeated latency/cost. In-memory operational counters are exposed at `/v1/metrics/summary` for demo observability — not user analytics. Cache and metrics are process-local: both reset on backend restart and are not shared across workers, so they are not durable storage or observability. Client-side EXIF stripping/resizing runs before upload where supported and falls back to the original file on failure. No database, Redis, Langfuse, Sentry, auth, or persistent storage is added; deep observability and deploy QA remain deferred to Blocks 14/15.
 
+## Configuration note — deploy readiness, evals, and smoke harness
+
+Block 14/15 adds deployment documentation, environment variable coverage,
+offline golden-set fixture checks, and a lightweight smoke script/checklist. It
+does not perform a live deploy, final QA, final polish, or add database, Redis,
+auth, persistent storage, Langfuse, Sentry, user analytics, or new AI features.
+Live deployment requires host-level environment variables: backend Gemini mode
+and key for real analysis, frontend API URL, and backend CORS origins. Minimal
+evals run offline against fixture data and must not call Gemini or
+OpenFoodFacts.
+
 ## Competitive positioning (informational)
 
 Many apps excel at barcode lookup (e.g. Yuka) or generic visual search (e.g. Google Lens). SnapInsight’s planned differentiation is a **transparent, cited, confidence-aware multimodal companion** for packaged products—camera-first input, grounded retrieval, and explicit uncertainty—not a claim to outperform closed products on every dimension.
