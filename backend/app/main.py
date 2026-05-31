@@ -3,13 +3,16 @@ import os
 import time
 import uuid
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import Body, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from pydantic import ValidationError
 
 from app.config import ConfigurationError, get_effective_analysis_mode, get_settings
 from app.schemas import (
     AnalyzeImageResponse,
+    CompareProductsRequest,
+    CompareProductsResponse,
     HealthResponse,
     ProductChatRequest,
     ProductChatResponse,
@@ -19,6 +22,7 @@ from app.services.analysis_router import (
     analyze_product_image,
 )
 from app.services.product_chat import ProductChatError, answer_product_question
+from app.services.product_compare import ProductCompareError, compare_products
 
 
 SERVICE_NAME = "snapinsight-backend"
@@ -83,6 +87,45 @@ def build_chat_error_response(
     if latency_ms is not None:
         content["latency_ms"] = latency_ms
     return JSONResponse(status_code=status_code, content=content)
+
+
+def build_compare_error_response(
+    *,
+    status_code: int,
+    error: str,
+    message: str,
+    request_id: str,
+    latency_ms: int | None = None,
+) -> JSONResponse:
+    content = {
+        "error": error,
+        "message": message,
+        "request_id": request_id,
+    }
+    if latency_ms is not None:
+        content["latency_ms"] = latency_ms
+    return JSONResponse(status_code=status_code, content=content)
+
+
+def _contains_media_payload(value: object) -> bool:
+    forbidden_keys = {
+        "image",
+        "image_bytes",
+        "image_base64",
+        "base64",
+        "audio",
+        "audio_bytes",
+        "audio_base64",
+    }
+    if isinstance(value, dict):
+        for key, nested in value.items():
+            if str(key).lower() in forbidden_keys:
+                return True
+            if _contains_media_payload(nested):
+                return True
+    if isinstance(value, list):
+        return any(_contains_media_payload(item) for item in value)
+    return False
 
 
 app = FastAPI(
@@ -229,6 +272,59 @@ async def chat_product(
         )
     except ProductChatError as exc:
         return build_chat_error_response(
+            status_code=exc.status_code,
+            error=exc.error,
+            message=exc.message,
+            request_id=request_id,
+            latency_ms=exc.latency_ms,
+        )
+
+
+@app.post("/v1/compare/products", response_model=CompareProductsResponse)
+async def compare_product_results(
+    payload: dict | None = Body(default=None),
+) -> CompareProductsResponse | JSONResponse:
+    start_time = time.monotonic()
+    request_id = str(uuid.uuid4())
+
+    if not payload or not payload.get("product_a") or not payload.get("product_b"):
+        return build_compare_error_response(
+            status_code=400,
+            error="compare_missing_product",
+            message="Both Product A and Product B are required.",
+            request_id=request_id,
+            latency_ms=int((time.monotonic() - start_time) * 1000),
+        )
+
+    if _contains_media_payload(payload):
+        return build_compare_error_response(
+            status_code=400,
+            error="compare_media_not_allowed",
+            message="Compare accepts analysis results only, not image or audio bytes.",
+            request_id=request_id,
+            latency_ms=int((time.monotonic() - start_time) * 1000),
+        )
+
+    try:
+        request = CompareProductsRequest.model_validate(payload)
+    except ValidationError:
+        return build_compare_error_response(
+            status_code=400,
+            error="compare_invalid_request",
+            message="Compare requires two valid analysis results.",
+            request_id=request_id,
+            latency_ms=int((time.monotonic() - start_time) * 1000),
+        )
+
+    try:
+        # Compare is deterministic and uses only supplied analysis data.
+        return compare_products(
+            request=request,
+            request_id=request_id,
+            started_at=start_time,
+        )
+    except ProductCompareError as exc:
+        return build_compare_error_response(
             status_code=exc.status_code,
             error=exc.error,
             message=exc.message,

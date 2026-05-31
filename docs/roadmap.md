@@ -73,6 +73,7 @@ Delivery is organized into **blocks**. Block count is not rigid: blocks may be c
 ## Block 10 — Compare mode
 
 - Two-product side-by-side comparison using same analysis pipeline.
+- **Block 9/10 status:** Visual overlay status chips and Compare Mode Lite use existing analysis/OFF enrichment only; no boxes, new AI/OFF calls, media persistence, or medical/absolute claims.
 
 ## Block 11 — Caching + cost controls
 
