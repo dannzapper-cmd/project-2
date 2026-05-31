@@ -43,6 +43,38 @@ class Citation(BaseModel):
     url: str | None = None
 
 
+class NutritionSummary(BaseModel):
+    # All values are display-ready strings, not floats for calculation.
+    energy_kcal_100g: str | None = None
+    sugars_100g: str | None = None
+    fat_100g: str | None = None
+    saturated_fat_100g: str | None = None
+    proteins_100g: str | None = None
+    salt_100g: str | None = None
+
+    @property
+    def has_any(self) -> bool:
+        return any(
+            [
+                self.energy_kcal_100g,
+                self.sugars_100g,
+                self.fat_100g,
+                self.saturated_fat_100g,
+                self.proteins_100g,
+                self.salt_100g,
+            ]
+        )
+
+
+class ProductEnrichment(BaseModel):
+    nutrition_summary: NutritionSummary | None = None
+    nutrition_grade: str | None = None
+    labels: list[str] = Field(default_factory=list)
+    additives: list[str] = Field(default_factory=list)
+    enrichment_source_confidence: str | None = None
+    enrichment_notes: list[str] = Field(default_factory=list)
+
+
 class GroundingResult(BaseModel):
     grounding_status: Literal[
         "grounded",
@@ -56,6 +88,7 @@ class GroundingResult(BaseModel):
     retrieved_at: datetime | None = None
     citations: list[Citation] = Field(default_factory=list)
     source_trace: list[str] = Field(default_factory=list)
+    product_enrichment: ProductEnrichment | None = None
 
 
 class PrivacySummary(BaseModel):
@@ -91,3 +124,4 @@ class AnalyzeImageResponse(BaseModel):
     source_product_id: str | None = None
     retrieved_at: datetime | None = None
     source_trace: list[str] = Field(default_factory=list)
+    product_enrichment: ProductEnrichment | None = None

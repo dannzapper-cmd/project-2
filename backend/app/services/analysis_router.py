@@ -44,6 +44,7 @@ def _merge_grounding(
     response.retrieved_at = grounding.retrieved_at
     response.citations = grounding.citations
     response.source_trace = grounding.source_trace
+    response.product_enrichment = grounding.product_enrichment
     return response
 
 
@@ -51,6 +52,7 @@ async def _ground_response(response: AnalyzeImageResponse) -> AnalyzeImageRespon
     if response.mode not in {"gemini", "mock"}:
         return response
 
+    # Privacy: grounding data is merged in-memory and not persisted beyond this request.
     grounding = await OpenFoodFactsClient().ground(response.product)
     return _merge_grounding(response, grounding)
 

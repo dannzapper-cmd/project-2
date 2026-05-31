@@ -172,7 +172,7 @@ Example response shape:
 
 ## OpenFoodFacts grounding
 
-OpenFoodFacts is the first citation source for SnapInsight. It is community-contributed, so results are supplementary and may be incomplete. Barcode matches are treated as grounded; name-based matches are partial matches only. SnapInsight does not provide medical diagnosis or absolute health claims from OpenFoodFacts data. No uploaded images or OpenFoodFacts responses are stored, and no database/vector DB is added in this block.
+OpenFoodFacts is the first citation and product-enrichment source for SnapInsight. It is community-contributed, so nutrition, label, and additive data are supplementary and may be incomplete. Barcode matches produce high enrichment confidence; name-based matches produce medium confidence. SnapInsight does not provide medical diagnosis or absolute health claims from OpenFoodFacts data. No uploaded images or OpenFoodFacts responses are stored, and no database, cache, or vector DB is added in this block.
 
 ## Validation examples
 

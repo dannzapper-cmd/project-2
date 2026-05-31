@@ -61,7 +61,7 @@ Stack rows are **targets**, not implemented dependencies. Verify tiers and limit
 
 ## Configuration note — OpenFoodFacts grounding
 
-OpenFoodFacts is the first citation foundation for product grounding. Its data is community-contributed and must be treated as supplementary, not guaranteed truth. SnapInsight does not provide medical diagnosis or absolute health claims from this source. Grounding does not store uploaded images or OpenFoodFacts responses, and this block does not add a database, vector store, cache, or RAG pipeline.
+OpenFoodFacts is the first citation and product-enrichment foundation. Its nutrition, label, and additive data is community-contributed and supplementary, not guaranteed truth. Enrichment confidence follows the match method: barcode is high, name-based matching is medium. SnapInsight does not provide medical diagnosis or absolute health claims, stores no uploaded images or OpenFoodFacts responses, and adds no database, cache, vector store, or RAG pipeline in this block.
 
 ## Competitive positioning (informational)
 
