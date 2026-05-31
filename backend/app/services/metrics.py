@@ -75,5 +75,8 @@ class MetricsService:
             self._started_at = time.monotonic()
 
 
-# Process-local singleton. In-memory only; resets on restart. Not persisted.
+# Process-local singleton. In-memory only: resets on backend restart and is not
+# shared across multiple workers/instances. These are operational counters, not
+# durable observability, and never hold product names, chat messages, prompts,
+# image hashes, or other user-specific data.
 metrics = MetricsService()

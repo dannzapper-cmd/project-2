@@ -69,7 +69,7 @@ Contextual chat uses only the current analysis, grounding, citations, and enrich
 
 ## Configuration note — caching, privacy, and metrics
 
-An in-memory LRU cache stores analysis responses only (hashed image-byte keys, never raw images/base64), reducing repeated latency/cost. In-memory operational counters are exposed at `/v1/metrics/summary` for demo observability — not user analytics. Client-side EXIF stripping/resizing runs before upload where supported. No database, Redis, Langfuse, Sentry, auth, or persistent storage is added; deep observability and deploy QA remain deferred to Blocks 14/15.
+An in-memory LRU cache stores successful analysis responses only (hashed image-byte keys, never raw images/base64, keys never exposed), reducing repeated latency/cost. In-memory operational counters are exposed at `/v1/metrics/summary` for demo observability — not user analytics. Cache and metrics are process-local: both reset on backend restart and are not shared across workers, so they are not durable storage or observability. Client-side EXIF stripping/resizing runs before upload where supported and falls back to the original file on failure. No database, Redis, Langfuse, Sentry, auth, or persistent storage is added; deep observability and deploy QA remain deferred to Blocks 14/15.
 
 ## Competitive positioning (informational)
 

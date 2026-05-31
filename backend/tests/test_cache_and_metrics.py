@@ -91,6 +91,46 @@ def test_different_image_is_cache_miss(monkeypatch):
     assert other.json()["cache_hit"] is False
 
 
+def test_cache_hit_does_not_mutate_stored_response(monkeypatch):
+    use_mock_mode(monkeypatch)
+    monkeypatch.setenv("SNAPINSIGHT_CACHE_ENABLED", "true")
+
+    client = TestClient(app)
+
+    first = post_image(client).json()
+    second = post_image(client).json()
+    third = post_image(client).json()
+
+    # Each response is independent; the cached object is never mutated in place.
+    assert first["request_id"] != second["request_id"] != third["request_id"]
+    assert second["request_id"] != third["request_id"]
+    assert second["cache_hit"] is True
+    assert third["cache_hit"] is True
+
+    # The stored value keeps cache_hit=False and its original request_id.
+    (entry,) = analysis_cache._cache.values()
+    assert entry.value.cache_hit is False
+    assert entry.value.request_id == first["request_id"]
+
+
+def test_cache_key_hash_not_exposed_in_response(monkeypatch):
+    use_mock_mode(monkeypatch)
+    monkeypatch.setenv("SNAPINSIGHT_CACHE_ENABLED", "true")
+
+    client = TestClient(app)
+    body = post_image(client).json()
+
+    # The only cache marker exposed is the cache_hit boolean.
+    assert "cache_hit" in body
+    assert "cache_key" not in body
+    assert "image_hash" not in body
+
+    key = compute_cache_key(
+        IMAGE_BYTES, analysis_mode="mock", model_version="mock"
+    )
+    assert key not in post_image(client).text
+
+
 def test_cache_does_not_store_errors(monkeypatch):
     monkeypatch.setenv("SNAPINSIGHT_ANALYSIS_MODE", "gemini")
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")

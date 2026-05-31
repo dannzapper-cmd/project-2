@@ -90,5 +90,7 @@ class AnalysisCache:
         return len(self._cache)
 
 
-# Process-local singleton. In-memory only; cleared on restart.
+# Process-local singleton. In-memory only: resets on backend restart and is not
+# shared across multiple workers/instances. A shared cache (Redis/DB) is out of
+# scope for this PR. Cache keys (image hashes) are never exposed to clients.
 analysis_cache = AnalysisCache()
