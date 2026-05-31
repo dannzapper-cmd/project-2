@@ -8,6 +8,9 @@ class HealthResponse(BaseModel):
     service: str
     mode: str
     version: str
+    analysis_mode: str
+    gemini_configured: bool
+    mock_fallback_allowed: bool
 
 
 class Confidence(BaseModel):

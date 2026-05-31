@@ -7,9 +7,19 @@ interface MockAnalysisResultCardProps {
 }
 
 function getModeLabel(mode: AnalysisResponse["mode"]): string {
-  if (mode === "gemini") return "Gemini analysis"
-  if (mode === "mock_fallback") return "Mock fallback"
-  return "Mock analysis / no AI yet"
+  if (mode === "gemini") return "AI Analysis"
+  if (mode === "mock_fallback") return "Mock Fallback"
+  return "Mock (dev)"
+}
+
+function getModeBadgeClass(mode: AnalysisResponse["mode"]): string {
+  if (mode === "gemini") {
+    return "border-emerald-500/30 bg-emerald-500/15 text-emerald-300"
+  }
+  if (mode === "mock_fallback") {
+    return "border-amber-500/30 bg-amber-500/15 text-amber-300"
+  }
+  return "border-white/10 bg-slate-800/70 text-muted-foreground"
 }
 
 function formatScore(score: number): string {
@@ -20,7 +30,9 @@ export function MockAnalysisResultCard({ result }: MockAnalysisResultCardProps) 
   return (
     <section className="glass-card mt-5 p-5" aria-live="polite">
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-500/30 bg-violet-500/15 px-3 py-1 text-xs font-medium text-violet-300">
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium ${getModeBadgeClass(result.mode)}`}
+        >
           <Sparkles className="h-3.5 w-3.5" />
           {getModeLabel(result.mode)}
         </span>
@@ -43,6 +55,13 @@ export function MockAnalysisResultCard({ result }: MockAnalysisResultCardProps) 
           </p>
         )}
       </div>
+
+      {result.mode === "mock_fallback" && (
+        <div className="mb-4 rounded-2xl border border-amber-500/25 bg-amber-500/10 p-3 text-sm text-amber-100">
+          Gemini was unavailable. This result is not real AI analysis.
+        </div>
+      )}
+
 
       <div className="mb-4 grid gap-3 rounded-2xl border border-white/5 bg-slate-900/50 p-4 text-sm sm:grid-cols-2">
         <div>

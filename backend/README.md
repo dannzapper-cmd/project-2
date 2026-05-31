@@ -1,14 +1,14 @@
 # SnapInsight Backend
 
-FastAPI backend for image analysis. The API keeps the Block 3A/3B response
-contract stable while supporting mock mode and optional Gemini multimodal
-analysis.
+FastAPI backend for image analysis. Gemini multimodal structured output is the
+canonical real analysis engine; mock mode exists for local development, tests,
+CI, and controlled demo fallback.
 
 ## Current scope
 
 - FastAPI image-analysis endpoint with mock and Gemini modes.
-- Gemini calls are optional and server-side only.
-- Safe mock fallback when Gemini is not configured or cannot complete.
+- Gemini calls are server-side only and required for real analysis.
+- Mock fallback is opt-in and visibly labeled when enabled.
 - No RAG or Open Food Facts retrieval.
 - No real citations yet; `citations` remains an empty list.
 - No database, cache, auth, storage, or deployment configuration.
@@ -33,7 +33,7 @@ pip install -r requirements.txt
 
 ## Run locally
 
-Mock mode is the default when `GEMINI_API_KEY` is not configured:
+Mock mode is the default when `SNAPINSIGHT_ANALYSIS_MODE` is unset:
 
 ```bash
 SNAPINSIGHT_ANALYSIS_MODE=mock uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
@@ -66,27 +66,16 @@ export SNAPINSIGHT_ALLOWED_ORIGINS="http://localhost:3000,http://127.0.0.1:3000"
 
 The backend never defaults CORS to `*`.
 
-## Analysis environment
+## Configuration
 
-- `GEMINI_API_KEY`: server-side Gemini API key. Never expose this with a
-  `NEXT_PUBLIC_` prefix.
-- `GEMINI_MODEL`: optional model name. Defaults to `gemini-2.5-flash`.
-- `SNAPINSIGHT_ANALYSIS_MODE`:
-  - `mock` forces the deterministic mock response.
-  - `gemini` uses Gemini when `GEMINI_API_KEY` is present.
-  - If unset, the backend uses Gemini when a key is present and mock mode when
-    no key is present.
-
-If `SNAPINSIGHT_ANALYSIS_MODE=gemini` is set without `GEMINI_API_KEY`, the API
-returns a `mock_fallback` response with a safe configuration warning instead of
-crashing. Gemini provider failures, timeouts, safety blocks, quota errors, or
-invalid structured output also return `mock_fallback` with a user-safe warning.
-Gemini calls may incur provider usage costs. Use mock mode for local UI work
-when real analysis is not needed.
-
-Privacy: in Gemini mode, image bytes are sent to Gemini for processing but are
-not stored by the SnapInsight backend. The backend does not persist uploaded
-images in any mode.
+- `SNAPINSIGHT_ANALYSIS_MODE`: `mock` or `gemini`; defaults to `mock` for local development and CI.
+- `GEMINI_API_KEY`: server-side key required when mode is `gemini`; never expose it as `NEXT_PUBLIC_`.
+- `GEMINI_MODEL`: optional, defaults to `gemini-2.5-flash`.
+- `SNAPINSIGHT_ALLOW_MOCK_FALLBACK`: `false` by default; set `true` only for controlled demo fallback.
+- Production/demo should set `SNAPINSIGHT_ANALYSIS_MODE=gemini` and provide `GEMINI_API_KEY`.
+- Missing keys or Gemini failures in gemini mode return HTTP 503 unless mock fallback is explicitly allowed.
+- Gemini calls may incur provider usage costs.
+- In Gemini mode, image bytes are sent to Gemini for processing but are not stored by the SnapInsight backend.
 
 ## Endpoints
 
@@ -105,7 +94,10 @@ Example response:
   "status": "ok",
   "service": "snapinsight-backend",
   "mode": "mock",
-  "version": "0.1.0"
+  "version": "0.1.0",
+  "analysis_mode": "mock",
+  "gemini_configured": false,
+  "mock_fallback_allowed": false
 }
 ```
 
