@@ -88,6 +88,20 @@ def graph_contains_forbidden_payload(graph: dict) -> bool:
     return walk(graph)
 
 
+def graph_validation_payload(
+    *,
+    nodes: list[GraphNode],
+    edges: list[GraphEdge],
+    evidence_paths: list[EvidencePath],
+) -> dict:
+    """Serialize graph structures for privacy scanning before return/sync."""
+    return {
+        "nodes": [node.model_dump() for node in nodes],
+        "edges": [edge.model_dump() for edge in edges],
+        "evidence_paths": [path.model_dump() for path in evidence_paths],
+    }
+
+
 class GraphBuildResult:
     def __init__(
         self,
@@ -310,7 +324,12 @@ def build_graph_from_analysis(analysis: AnalyzeImageResponse) -> GraphBuildResul
         related_warning = warning_nodes[0] if warning_nodes else None
         if additives_citation:
             if related_warning:
-                add_edge(additive_node, related_warning, "may_trigger", "warning")
+                add_edge(
+                    additive_node,
+                    related_warning,
+                    "contextual_warning",
+                    "contextual warning",
+                )
             add_edge(additive_node, additives_citation, "grounded_in", "citation")
             steps = [
                 EvidencePathStep(
@@ -341,7 +360,7 @@ def build_graph_from_analysis(analysis: AnalyzeImageResponse) -> GraphBuildResul
                     summary=(
                         f"{additive_node.label} → "
                         + (
-                            f"{related_warning.label} → "
+                            f"warning context ({related_warning.label}) → "
                             if related_warning
                             else ""
                         )

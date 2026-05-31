@@ -1,3 +1,4 @@
+import logging
 import time
 
 from app.config import Settings, is_neo4j_configured
@@ -6,8 +7,12 @@ from app.services.graph_builder import (
     build_graph_from_analysis,
     format_evidence_paths_for_chat,
     graph_contains_forbidden_payload,
+    graph_validation_payload,
 )
 from app.services.neo4j_graph import Neo4jGraphError, sync_graph_to_neo4j
+
+
+logger = logging.getLogger(__name__)
 
 
 def _latency_ms(started_at: float) -> int:
@@ -22,10 +27,11 @@ def build_product_graph_response(
     started_at: float,
 ) -> ProductGraphResponse:
     built = build_graph_from_analysis(analysis)
-    payload = {
-        "nodes": [node.model_dump() for node in built.nodes],
-        "edges": [edge.model_dump() for edge in built.edges],
-    }
+    payload = graph_validation_payload(
+        nodes=built.nodes,
+        edges=built.edges,
+        evidence_paths=built.evidence_paths,
+    )
     if graph_contains_forbidden_payload(payload):
         raise ValueError("Graph payload contains disallowed media or identifiers")
 
@@ -39,8 +45,12 @@ def build_product_graph_response(
                 source_product_id=analysis.source_product_id,
             )
             graph_backend = "neo4j"
-        except (Neo4jGraphError, Exception):  # noqa: BLE001
+        except (Neo4jGraphError, Exception) as exc:  # noqa: BLE001
             graph_backend = "neo4j_fallback"
+            logger.warning(
+                "Neo4j graph sync failed; using in-memory graph fallback.",
+                extra={"error_type": exc.__class__.__name__},
+            )
 
     return ProductGraphResponse(
         nodes=built.nodes,

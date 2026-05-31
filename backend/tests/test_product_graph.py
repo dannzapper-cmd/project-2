@@ -22,7 +22,9 @@ from app.schemas import (
 from app.services.graph_builder import (
     build_graph_from_analysis,
     graph_contains_forbidden_payload,
+    graph_validation_payload,
 )
+from app.services.neo4j_graph import Neo4jGraphError
 from app.services.product_graph import build_product_graph_response
 
 
@@ -128,6 +130,11 @@ def test_graph_builder_returns_expected_nodes_and_edges():
     assert len(built.edges) > 0
     assert any(path.path_type == "warning_nutrition_citation" for path in built.evidence_paths)
     assert any(path.path_type == "additive_warning_citation" for path in built.evidence_paths)
+    additive_edges = [
+        edge for edge in built.edges if edge.relationship == "contextual_warning"
+    ]
+    assert additive_edges
+    assert not any(edge.relationship == "may_trigger" for edge in built.edges)
 
 
 def test_fallback_mode_returns_non_empty_graph():
@@ -175,10 +182,11 @@ def test_neo4j_disabled_uses_memory_without_exception(monkeypatch):
 def test_graph_payload_rejects_media_and_secrets():
     analysis = mock_analysis()
     built = build_graph_from_analysis(analysis)
-    payload = {
-        "nodes": [node.model_dump() for node in built.nodes],
-        "edges": [edge.model_dump() for edge in built.edges],
-    }
+    payload = graph_validation_payload(
+        nodes=built.nodes,
+        edges=built.edges,
+        evidence_paths=built.evidence_paths,
+    )
     assert graph_contains_forbidden_payload(payload) is False
 
     unsafe = copy.deepcopy(payload)
@@ -188,6 +196,43 @@ def test_graph_payload_rejects_media_and_secrets():
     unsafe_secret = copy.deepcopy(payload)
     unsafe_secret["request_id"] = "secret-session"
     assert graph_contains_forbidden_payload(unsafe_secret) is True
+
+    unsafe_path = copy.deepcopy(payload)
+    unsafe_path["evidence_paths"][0]["summary"] = "data:image/jpeg;base64,unsafe"
+    assert graph_contains_forbidden_payload(unsafe_path) is True
+
+
+def test_neo4j_sync_failure_returns_fallback(monkeypatch):
+    def fail_sync(**_kwargs):
+        raise Neo4jGraphError("connection refused")
+
+    monkeypatch.setattr(
+        "app.services.product_graph.sync_graph_to_neo4j",
+        fail_sync,
+    )
+
+    settings = Settings(
+        gemini_api_key=None,
+        gemini_model="gemini-2.5-flash",
+        analysis_mode="mock",
+        mock_fallback_allowed=False,
+        cache_enabled=True,
+        cache_ttl_seconds=900,
+        cache_max_entries=50,
+        max_image_mb=8,
+        graph_enabled=True,
+        neo4j_uri="neo4j+s://example.databases.neo4j.io",
+        neo4j_username="neo4j",
+        neo4j_password="secret-password-not-logged",
+    )
+    response = build_product_graph_response(
+        analysis=mock_analysis(),
+        request_id="graph-neo4j-fallback",
+        settings=settings,
+        started_at=0.0,
+    )
+    assert len(response.nodes) > 0
+    assert response.graph_backend == "neo4j_fallback"
 
 
 def test_is_neo4j_configured_requires_all_env_vars():
