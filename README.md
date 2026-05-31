@@ -21,7 +21,10 @@ Food, packaged goods, and consumer packaged products (CPG), grounded in open dat
 5. **Interact** — contextual chat and voice for follow-up questions.
 6. **Measure** — operational metrics (latency, cost, retrieval quality, confidence) for reliability and iteration.
 
-All steps above are **planned**; none are implemented in Block 0.
+The current implementation includes the PWA shell, image upload/camera snapshot,
+FastAPI analysis API, Gemini real-analysis mode, OpenFoodFacts grounding,
+contextual chat, browser-only Voice Lite, Compare Mode Lite, in-memory
+cache/metrics, deploy readiness docs, offline eval fixtures, and smoke checks.
 
 ## Planned stack (not implemented)
 
@@ -31,7 +34,10 @@ Target architecture favors API-first, cloud-first delivery: a **Next.js** PWA wi
 
 ## Current status
 
-**Block 0 — Foundation only.** Documentation and Cursor context exist; no application code, APIs, AI calls, database, auth, or deployment configuration.
+**Block 14/15 — Deploy readiness + minimal evals + smoke harness.** This block
+prepares the project for deployment and basic operational validation. It is not
+final QA/polish and adds no database, Redis, auth, persistent storage, Langfuse,
+Sentry, or new AI feature.
 
 ## Documentation
 
@@ -43,6 +49,8 @@ Target architecture favors API-first, cloud-first delivery: a **Next.js** PWA wi
 | [docs/limitations.md](./docs/limitations.md) | Product and technical limitations |
 | [docs/cost-privacy-safety.md](./docs/cost-privacy-safety.md) | Cost, privacy, and safety controls |
 | [docs/ai-workflow.md](./docs/ai-workflow.md) | Development workflow across tools |
+| [docs/deploy.md](./docs/deploy.md) | Deploy readiness guide and required env vars |
+| [docs/smoke-test.md](./docs/smoke-test.md) | Automated and manual post-deploy smoke checks |
 
 ## Limitations (summary)
 

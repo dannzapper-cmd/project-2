@@ -186,7 +186,29 @@ Overlay is a visual status layer, not object detection boxes. Compare Mode Lite 
 
 An in-memory LRU cache (no database/Redis) reduces repeated analysis latency/cost. It stores analysis responses only, keyed by a SHA-256 hash of image bytes + mode + model version; raw images and base64 are never stored, logged, or written to disk, and cache keys/hashes are never exposed in API responses or the UI. Only successful image-analysis responses (`mock`/`gemini`) are cached; chat, compare, errors, and mock fallbacks are not. Defaults: `SNAPINSIGHT_CACHE_ENABLED=true`, `SNAPINSIGHT_CACHE_TTL_SECONDS=900`, `SNAPINSIGHT_CACHE_MAX_ENTRIES=50`. Uploads over `SNAPINSIGHT_MAX_IMAGE_MB` (default 8) are rejected with HTTP 413 and a friendly message before any Gemini/OpenFoodFacts work. The client strips EXIF and resizes images via Canvas before upload where supported (HEIC excepted).
 
-The cache and metrics are **process-local and in-memory only**: both reset on backend restart and are not shared across multiple workers/instances. They are not durable observability or persistent storage; a shared cache/metrics store (Redis/DB) is intentionally out of scope for this PR. `GET /v1/metrics/summary` exposes operational counters only — no product names, chat messages, prompts, image hashes, or user-specific data. Auth/rate limiting and deep observability/deploy QA are deferred to Block 14/15.
+The cache and metrics are **process-local and in-memory only**: both reset on backend restart and are not shared across multiple workers/instances. They are not durable observability or persistent storage; a shared cache/metrics store (Redis/DB) is intentionally out of scope for this PR. `GET /v1/metrics/summary` exposes operational counters only — no product names, chat messages, prompts, image hashes, or user-specific data. Auth/rate limiting and final QA remain out of scope for Block 14/15 deploy readiness.
+
+## Deploy readiness, evals, and smoke checks
+
+See [`../docs/deploy.md`](../docs/deploy.md) and
+[`../docs/smoke-test.md`](../docs/smoke-test.md).
+
+Useful local validation commands from the repository root:
+
+```bash
+python3 -m compileall -q backend/app
+python3 -m pytest backend/tests -v
+python3 backend/evals/run_evals.py
+python3 scripts/smoke_check.py
+npm run lint
+npm run build
+```
+
+The eval script is offline fixture validation only: it does not call Gemini,
+OpenFoodFacts, backend services, or upload/store images. The smoke script checks
+health, metrics, mock chat when the backend is in mock mode, and compare with
+synthetic analysis JSON. Real Gemini image analysis and OpenFoodFacts matching
+remain manual post-deploy checks.
 
 ## Validation examples
 
