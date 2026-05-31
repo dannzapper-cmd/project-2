@@ -59,6 +59,10 @@ Stack rows are **targets**, not implemented dependencies. Verify tiers and limit
 - **Absolute health claims** — informational context only; user must verify labels.
 - **Unnecessary image retention** — ephemeral-by-default image handling.
 
+## Configuration note — OpenFoodFacts grounding
+
+OpenFoodFacts is the first citation foundation for product grounding. Its data is community-contributed and must be treated as supplementary, not guaranteed truth. SnapInsight does not provide medical diagnosis or absolute health claims from this source. Grounding does not store uploaded images or OpenFoodFacts responses, and this block does not add a database, vector store, cache, or RAG pipeline.
+
 ## Competitive positioning (informational)
 
 Many apps excel at barcode lookup (e.g. Yuka) or generic visual search (e.g. Google Lens). SnapInsight’s planned differentiation is a **transparent, cited, confidence-aware multimodal companion** for packaged products—camera-first input, grounded retrieval, and explicit uncertainty—not a claim to outperform closed products on every dimension.

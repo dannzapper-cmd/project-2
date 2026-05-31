@@ -11,7 +11,16 @@ export interface AnalysisProduct {
   brand: string | null
   detected_attributes: string[]
   confidence: AnalysisConfidence
+  barcode: string | null
 }
+
+export type GroundingStatus =
+  | "grounded"
+  | "partial_match"
+  | "no_match"
+  | "grounding_unavailable"
+
+export type MatchMethod = "barcode" | "name_brand" | "name_only" | "none"
 
 export interface AnalysisInsight {
   title: string
@@ -20,8 +29,11 @@ export interface AnalysisInsight {
 }
 
 export interface AnalysisCitation {
+  source: string
   title: string
-  source: string | null
+  field: string
+  field_label: string
+  value: string
   url: string | null
 }
 
@@ -47,6 +59,12 @@ export interface AnalysisResponse {
   next_questions: string[]
   privacy: AnalysisPrivacy
   meta: AnalysisMeta
+  grounding_status: GroundingStatus
+  grounding_summary: string
+  match_method: MatchMethod | null
+  source_product_id: string | null
+  retrieved_at: string | null
+  source_trace: string[]
 }
 
 interface ApiErrorBody {

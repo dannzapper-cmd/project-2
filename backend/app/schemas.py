@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -24,6 +25,7 @@ class ProductSummary(BaseModel):
     brand: str | None
     detected_attributes: list[str]
     confidence: Confidence
+    barcode: str | None = None
 
 
 class Insight(BaseModel):
@@ -33,9 +35,27 @@ class Insight(BaseModel):
 
 
 class Citation(BaseModel):
+    source: str = "OpenFoodFacts"
     title: str
-    source: str | None = None
+    field: str
+    field_label: str
+    value: str
     url: str | None = None
+
+
+class GroundingResult(BaseModel):
+    grounding_status: Literal[
+        "grounded",
+        "partial_match",
+        "no_match",
+        "grounding_unavailable",
+    ]
+    grounding_summary: str
+    match_method: Literal["barcode", "name_brand", "name_only", "none"] | None = None
+    source_product_id: str | None = None
+    retrieved_at: datetime | None = None
+    citations: list[Citation] = Field(default_factory=list)
+    source_trace: list[str] = Field(default_factory=list)
 
 
 class PrivacySummary(BaseModel):
@@ -60,3 +80,14 @@ class AnalyzeImageResponse(BaseModel):
     next_questions: list[str]
     privacy: PrivacySummary
     meta: ResponseMeta
+    grounding_status: Literal[
+        "grounded",
+        "partial_match",
+        "no_match",
+        "grounding_unavailable",
+    ] = "no_match"
+    grounding_summary: str = "No reliable OpenFoodFacts match found"
+    match_method: Literal["barcode", "name_brand", "name_only", "none"] | None = "none"
+    source_product_id: str | None = None
+    retrieved_at: datetime | None = None
+    source_trace: list[str] = Field(default_factory=list)

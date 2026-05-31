@@ -42,6 +42,10 @@ class GeminiProduct(BaseModel):
     brand: str | None = None
     detected_attributes: list[str] = Field(default_factory=list)
     confidence: GeminiConfidence
+    barcode: str | None = Field(
+        default=None,
+        description="EAN-13, UPC-A, or similar if clearly visible in image.",
+    )
 
 
 class GeminiProductResponse(BaseModel):
@@ -58,6 +62,7 @@ Rules:
 - Identify visible product information from the packaging or label.
 - Extract likely display_name, category, and brand only when visible or reasonably supported.
 - Extract visible attributes from the package or label only when reasonably supported.
+- Extract barcode only when an EAN-13, UPC-A, or similar code is clearly visible.
 - Provide concise, actionable insights.
 - Provide warnings or limitations when uncertain.
 - Provide confidence score from 0.0 to 1.0 and label low, medium, or high.
@@ -147,6 +152,7 @@ async def analyze_image_with_gemini(
                 score=parsed.product.confidence.score,
                 label=parsed.product.confidence.label,
             ),
+            barcode=parsed.product.barcode,
         ),
         insights=[
             Insight(title=insight.title, body=insight.body, type=insight.type)

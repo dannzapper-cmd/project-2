@@ -1,6 +1,6 @@
 import { AlertTriangle, Clock, Database, ShieldCheck, Sparkles } from "lucide-react"
 
-import type { AnalysisResponse } from "@/lib/snapinsight-api"
+import type { AnalysisResponse, GroundingStatus } from "@/lib/snapinsight-api"
 
 interface MockAnalysisResultCardProps {
   result: AnalysisResponse
@@ -22,11 +22,44 @@ function getModeBadgeClass(mode: AnalysisResponse["mode"]): string {
   return "border-white/10 bg-slate-800/70 text-muted-foreground"
 }
 
+function getGroundingLabel(status: GroundingStatus): string {
+  if (status === "grounded") return "Grounded"
+  if (status === "partial_match") return "Partial match"
+  if (status === "grounding_unavailable") return "Source unavailable"
+  return "No source match"
+}
+
+function getGroundingBadgeClass(status: GroundingStatus): string {
+  if (status === "grounded") {
+    return "border-emerald-500/30 bg-emerald-500/15 text-emerald-300"
+  }
+  if (status === "partial_match") {
+    return "border-amber-500/30 bg-amber-500/15 text-amber-300"
+  }
+  return "border-white/10 bg-slate-800/70 text-muted-foreground"
+}
+
 function formatScore(score: number): string {
   return `${Math.round(score * 100)}%`
 }
 
+function getGroundingMessage(result: AnalysisResponse): string | null {
+  if (result.grounding_status === "no_match") {
+    return "No reliable OpenFoodFacts match found. Try a photo showing the front label or barcode."
+  }
+  if (result.grounding_status === "grounding_unavailable") {
+    return "Could not reach OpenFoodFacts. AI analysis above is still valid."
+  }
+  return result.grounding_summary || null
+}
+
 export function MockAnalysisResultCard({ result }: MockAnalysisResultCardProps) {
+  const groundingMessage = getGroundingMessage(result)
+  const citationHeading =
+    result.mode === "mock_fallback" && result.citations.length > 0
+      ? "Source data (community)"
+      : "Citations"
+
   return (
     <section className="glass-card mt-5 p-5" aria-live="polite">
       <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -35,6 +68,12 @@ export function MockAnalysisResultCard({ result }: MockAnalysisResultCardProps) 
         >
           <Sparkles className="h-3.5 w-3.5" />
           {getModeLabel(result.mode)}
+        </span>
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium ${getGroundingBadgeClass(result.grounding_status)}`}
+        >
+          <Database className="h-3.5 w-3.5" />
+          {getGroundingLabel(result.grounding_status)}
         </span>
         <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-slate-800/70 px-3 py-1 text-xs text-muted-foreground">
           <Clock className="h-3.5 w-3.5" />
@@ -61,7 +100,6 @@ export function MockAnalysisResultCard({ result }: MockAnalysisResultCardProps) 
           Gemini was unavailable. This result is not real AI analysis.
         </div>
       )}
-
 
       <div className="mb-4 grid gap-3 rounded-2xl border border-white/5 bg-slate-900/50 p-4 text-sm sm:grid-cols-2">
         <div>
@@ -115,12 +153,45 @@ export function MockAnalysisResultCard({ result }: MockAnalysisResultCardProps) 
       <div className="mb-4 rounded-2xl border border-white/5 bg-slate-800/40 p-3">
         <div className="mb-2 flex items-center gap-2 text-muted-foreground">
           <Database className="h-4 w-4" />
-          <h3 className="text-sm font-medium text-foreground">Citations</h3>
+          <h3 className="text-sm font-medium text-foreground">
+            {citationHeading}
+          </h3>
         </div>
-        <p className="text-sm text-muted-foreground">
-          {result.citations.length > 0
-            ? `${result.citations.length} citation source(s)`
-            : "Not connected yet"}
+        {result.citations.length > 0 ? (
+          <div className="space-y-3">
+            {result.citations.map((citation) => (
+              <div key={`${citation.field}-${citation.value}`} className="text-sm">
+                <p className="font-medium text-foreground">
+                  {citation.field_label}
+                </p>
+                <p className="mt-1 leading-relaxed text-muted-foreground">
+                  {citation.value}
+                </p>
+                {citation.url && (
+                  <a
+                    href={citation.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-1 inline-flex text-xs font-medium text-violet-300 hover:text-violet-200"
+                  >
+                    View on OpenFoodFacts
+                  </a>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            {groundingMessage ?? "Not connected yet"}
+          </p>
+        )}
+        {groundingMessage && result.citations.length > 0 && (
+          <p className="mt-3 text-xs text-muted-foreground">
+            {groundingMessage}
+          </p>
+        )}
+        <p className="mt-3 text-xs text-muted-foreground">
+          OpenFoodFacts data is community-contributed and may be incomplete.
         </p>
       </div>
 

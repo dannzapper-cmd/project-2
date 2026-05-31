@@ -41,6 +41,7 @@ def build_mock_image_analysis_response(
                 "Ready for future multimodal analysis",
             ],
             confidence=Confidence(score=0.0, label="mock"),
+            barcode=None,
         ),
         insights=[
             Insight(
