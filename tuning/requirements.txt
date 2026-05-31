@@ -1,0 +1,22 @@
+# SnapInsight Block 18C — tuning pipeline dependencies.
+#
+# These are ISOLATED from the backend and frontend. Do NOT install them into the
+# app build. Only validate_dataset.py and the pytest smoke tests run on CPU with
+# the standard library; everything else (real LoRA training / real-model eval)
+# needs the heavier packages below and a GPU runtime (Colab/Kaggle/RunPod).
+#
+# CPU smoke-test / validation only -> no install required (standard library).
+#
+# Real training + real-model evaluation (GPU recommended):
+torch>=2.2,<3.0
+transformers>=4.41,<5.0
+peft>=0.11,<0.16
+datasets>=2.19,<3.0
+accelerate>=0.30,<1.0
+sentencepiece>=0.2.0   # required by the T5 (flan-t5) tokenizer
+
+# Dev / smoke tests
+pytest>=8.0.0
+
+# NOTE: no google-cloud-* packages. The Vertex SFT exporter only writes a local
+# JSONL file in the documented format and never calls a Google API.

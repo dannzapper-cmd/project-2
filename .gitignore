@@ -42,6 +42,20 @@ yarn-error.log*
 # vercel
 .vercel
 
+# tuning pipeline (Block 18C) — never commit model artifacts or generated outputs
+/tuning/outputs/
+tuning/outputs/
+**/*.safetensors
+**/*.bin
+**/*.pt
+**/*.ckpt
+**/adapter_model.*
+**/adapter_config.json
+tuning/reports/eval_report.md
+.pytest_cache/
+__pycache__/
+*.py[cod]
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
