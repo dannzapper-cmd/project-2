@@ -63,6 +63,10 @@ Stack rows are **targets**, not implemented dependencies. Verify tiers and limit
 
 OpenFoodFacts is the first citation and product-enrichment foundation. Its nutrition, label, and additive data is community-contributed and supplementary, not guaranteed truth. Enrichment confidence follows the match method: barcode is high, name-based matching is medium. SnapInsight does not provide medical diagnosis or absolute health claims, stores no uploaded images or OpenFoodFacts responses, and adds no database, cache, vector store, or RAG pipeline in this block.
 
+## Configuration note - Contextual chat and Voice Lite
+
+Contextual chat uses only the current analysis, grounding, citations, and enrichment context and is not stored server-side. Voice Lite uses browser speech APIs only; no audio is sent to the backend. Medical diagnosis, absolute health claims, Gemini Live, server-side voice, and persistent memory remain out of scope.
+
 ## Competitive positioning (informational)
 
 Many apps excel at barcode lookup (e.g. Yuka) or generic visual search (e.g. Google Lens). SnapInsight’s planned differentiation is a **transparent, cited, confidence-aware multimodal companion** for packaged products—camera-first input, grounded retrieval, and explicit uncertainty—not a claim to outperform closed products on every dimension.

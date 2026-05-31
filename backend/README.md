@@ -174,6 +174,10 @@ Example response shape:
 
 OpenFoodFacts is the first citation and product-enrichment source for SnapInsight. It is community-contributed, so nutrition, label, and additive data are supplementary and may be incomplete. Barcode matches produce high enrichment confidence; name-based matches produce medium confidence. SnapInsight does not provide medical diagnosis or absolute health claims from OpenFoodFacts data. No uploaded images or OpenFoodFacts responses are stored, and no database, cache, or vector DB is added in this block.
 
+## Contextual chat and Voice Lite
+
+Product chat uses the current analysis result, grounding, citations, and enrichment context only; no image bytes or raw OpenFoodFacts payloads are sent. Chat is stateless and not stored server-side. Voice Lite is browser-only speech recognition/synthesis; no audio is sent to the backend. Medical diagnosis, absolute health claims, Gemini Live, server-side voice, and persistent memory are deferred.
+
 ## Validation examples
 
 Reject a non-image upload:

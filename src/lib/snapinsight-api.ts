@@ -86,6 +86,20 @@ export interface AnalysisResponse {
   product_enrichment: ProductEnrichment | null
 }
 
+export interface ChatMessage {
+  role: "user" | "assistant"
+  content: string
+}
+
+export interface ProductChatResponse {
+  answer: string
+  mode: "gemini" | "mock" | "mock_fallback" | "error"
+  citations_used: AnalysisCitation[]
+  warnings: string[]
+  request_id: string
+  latency_ms: number
+}
+
 interface ApiErrorBody {
   detail?: string
   error?: string
@@ -139,4 +153,39 @@ export async function analyzeImage(
   }
 
   return response.json() as Promise<AnalysisResponse>
+}
+
+export async function chatWithProduct(
+  analysis: AnalysisResponse,
+  messages: ChatMessage[],
+  question: string,
+  signal?: AbortSignal
+): Promise<ProductChatResponse> {
+  const response = await fetch(`${getApiBase()}/v1/chat/product`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ analysis, messages, question }),
+    signal,
+  })
+
+  if (!response.ok) {
+    let detail = `Chat request failed with status ${response.status}.`
+
+    try {
+      const errorBody = (await response.json()) as ApiErrorBody
+      if (errorBody.message) {
+        detail = errorBody.message
+      } else if (errorBody.detail) {
+        detail = errorBody.detail
+      }
+    } catch {
+      // Keep the generic status message when the backend returns non-JSON.
+    }
+
+    throw new Error(detail)
+  }
+
+  return response.json() as Promise<ProductChatResponse>
 }

@@ -8,11 +8,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.config import ConfigurationError, get_effective_analysis_mode, get_settings
-from app.schemas import AnalyzeImageResponse, HealthResponse
+from app.schemas import (
+    AnalyzeImageResponse,
+    HealthResponse,
+    ProductChatRequest,
+    ProductChatResponse,
+)
 from app.services.analysis_router import (
     AnalysisUnavailableError,
     analyze_product_image,
 )
+from app.services.product_chat import ProductChatError, answer_product_question
 
 
 SERVICE_NAME = "snapinsight-backend"
@@ -58,6 +64,25 @@ def build_error_response(
             "latency_ms": latency_ms,
         },
     )
+
+
+def build_chat_error_response(
+    *,
+    status_code: int,
+    error: str,
+    message: str,
+    request_id: str,
+    latency_ms: int | None = None,
+) -> JSONResponse:
+    content = {
+        "error": error,
+        "message": message,
+        "mode": "error",
+        "request_id": request_id,
+    }
+    if latency_ms is not None:
+        content["latency_ms"] = latency_ms
+    return JSONResponse(status_code=status_code, content=content)
 
 
 app = FastAPI(
@@ -167,6 +192,43 @@ async def analyze_image(
         )
     except AnalysisUnavailableError as exc:
         return build_error_response(
+            status_code=exc.status_code,
+            error=exc.error,
+            message=exc.message,
+            request_id=request_id,
+            latency_ms=exc.latency_ms,
+        )
+
+
+@app.post("/v1/chat/product", response_model=ProductChatResponse)
+async def chat_product(
+    request: ProductChatRequest,
+) -> ProductChatResponse | JSONResponse:
+    start_time = time.monotonic()
+    request_id = str(uuid.uuid4())
+
+    try:
+        settings = get_settings()
+    except ConfigurationError as exc:
+        return build_chat_error_response(
+            status_code=500,
+            error="invalid_analysis_mode",
+            message=exc.message,
+            request_id=request_id,
+            latency_ms=int((time.monotonic() - start_time) * 1000),
+        )
+
+    try:
+        return await answer_product_question(
+            request_id=request_id,
+            analysis=request.analysis,
+            messages=request.messages,
+            question=request.question,
+            settings=settings,
+            started_at=start_time,
+        )
+    except ProductChatError as exc:
+        return build_chat_error_response(
             status_code=exc.status_code,
             error=exc.error,
             message=exc.message,

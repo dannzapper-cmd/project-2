@@ -10,6 +10,7 @@ import {
   type AnalysisResponse,
 } from "@/lib/snapinsight-api"
 import { MockAnalysisResultCard } from "@/components/snapinsight/mock-analysis-result-card"
+import { ProductChatPanel } from "@/components/snapinsight/product-chat-panel"
 
 function getStatusLabel(
   hasImage: boolean,
@@ -346,7 +347,12 @@ export function ImageInputPanel({ className }: ImageInputPanelProps) {
         </div>
       )}
 
-      {analysisResult && <MockAnalysisResultCard result={analysisResult} />}
+      {analysisResult && (
+        <>
+          <MockAnalysisResultCard result={analysisResult} />
+          <ProductChatPanel analysis={analysisResult} />
+        </>
+      )}
     </div>
   )
 }
