@@ -2,6 +2,7 @@ import logging
 import os
 import time
 import uuid
+from contextlib import asynccontextmanager
 
 from fastapi import Body, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -146,10 +147,20 @@ def _contains_media_payload(value: object) -> bool:
     return False
 
 
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    llmops.refresh_from_env()
+    try:
+        yield
+    finally:
+        llmops.shutdown()
+
+
 app = FastAPI(
     title="SnapInsight Backend API",
     description="SnapInsight image analysis API with mock and Gemini modes.",
     version=APP_VERSION,
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -159,16 +170,6 @@ app.add_middleware(
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
-
-
-@app.on_event("startup")
-async def startup_llmops() -> None:
-    llmops.refresh_from_env()
-
-
-@app.on_event("shutdown")
-async def shutdown_llmops() -> None:
-    llmops.shutdown()
 
 
 @app.get("/health", response_model=HealthResponse)
