@@ -6,6 +6,12 @@ interface MockAnalysisResultCardProps {
   result: AnalysisResponse
 }
 
+function getModeLabel(mode: AnalysisResponse["mode"]): string {
+  if (mode === "gemini") return "Gemini analysis"
+  if (mode === "mock_fallback") return "Mock fallback"
+  return "Mock analysis / no AI yet"
+}
+
 function formatScore(score: number): string {
   return `${Math.round(score * 100)}%`
 }
@@ -16,7 +22,7 @@ export function MockAnalysisResultCard({ result }: MockAnalysisResultCardProps) 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-500/30 bg-violet-500/15 px-3 py-1 text-xs font-medium text-violet-300">
           <Sparkles className="h-3.5 w-3.5" />
-          Mock analysis / no AI yet
+          {getModeLabel(result.mode)}
         </span>
         <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-slate-800/70 px-3 py-1 text-xs text-muted-foreground">
           <Clock className="h-3.5 w-3.5" />
@@ -31,6 +37,11 @@ export function MockAnalysisResultCard({ result }: MockAnalysisResultCardProps) 
         <p className="mt-1 text-sm text-muted-foreground">
           Category: {result.product.category}
         </p>
+        {result.product.brand && (
+          <p className="mt-1 text-sm text-muted-foreground">
+            Brand: {result.product.brand}
+          </p>
+        )}
       </div>
 
       <div className="mb-4 grid gap-3 rounded-2xl border border-white/5 bg-slate-900/50 p-4 text-sm sm:grid-cols-2">
@@ -81,6 +92,18 @@ export function MockAnalysisResultCard({ result }: MockAnalysisResultCardProps) 
           </ul>
         </div>
       )}
+
+      <div className="mb-4 rounded-2xl border border-white/5 bg-slate-800/40 p-3">
+        <div className="mb-2 flex items-center gap-2 text-muted-foreground">
+          <Database className="h-4 w-4" />
+          <h3 className="text-sm font-medium text-foreground">Citations</h3>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          {result.citations.length > 0
+            ? `${result.citations.length} citation source(s)`
+            : "Not connected yet"}
+        </p>
+      </div>
 
       <div className="mb-4 rounded-2xl border border-white/5 bg-slate-800/40 p-3">
         <div className="mb-2 flex items-center gap-2 text-muted-foreground">

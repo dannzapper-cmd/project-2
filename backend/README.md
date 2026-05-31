@@ -1,19 +1,18 @@
 # SnapInsight Backend
 
-Minimal FastAPI backend contract for Block 3A. This service exposes a health
-check and a mock image-analysis endpoint that validates an uploaded image and
-returns a stable no-AI response shape for future frontend and Gemini
-integration.
+FastAPI backend for image analysis. The API keeps the Block 3A/3B response
+contract stable while supporting mock mode and optional Gemini multimodal
+analysis.
 
 ## Current scope
 
-- FastAPI only.
-- Deterministic mock/demo response only.
-- No AI model calls.
-- No Gemini integration.
+- FastAPI image-analysis endpoint with mock and Gemini modes.
+- Gemini calls are optional and server-side only.
+- Safe mock fallback when Gemini is not configured or cannot complete.
 - No RAG or Open Food Facts retrieval.
+- No real citations yet; `citations` remains an empty list.
 - No database, cache, auth, storage, or deployment configuration.
-- Uploaded image bytes are read for validation and discarded; they are never
+- Uploaded image bytes are read for validation and analysis only; they are never
   saved to disk, database, localStorage, sessionStorage, or remote storage.
 
 ## Requirements
@@ -34,7 +33,18 @@ pip install -r requirements.txt
 
 ## Run locally
 
+Mock mode is the default when `GEMINI_API_KEY` is not configured:
+
 ```bash
+SNAPINSIGHT_ANALYSIS_MODE=mock uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+Gemini mode is enabled server-side with a backend environment variable:
+
+```bash
+export GEMINI_API_KEY="your-server-side-key"
+export GEMINI_MODEL="gemini-2.5-flash"
+export SNAPINSIGHT_ANALYSIS_MODE="gemini"
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
@@ -55,6 +65,28 @@ export SNAPINSIGHT_ALLOWED_ORIGINS="http://localhost:3000,http://127.0.0.1:3000"
 ```
 
 The backend never defaults CORS to `*`.
+
+## Analysis environment
+
+- `GEMINI_API_KEY`: server-side Gemini API key. Never expose this with a
+  `NEXT_PUBLIC_` prefix.
+- `GEMINI_MODEL`: optional model name. Defaults to `gemini-2.5-flash`.
+- `SNAPINSIGHT_ANALYSIS_MODE`:
+  - `mock` forces the deterministic mock response.
+  - `gemini` uses Gemini when `GEMINI_API_KEY` is present.
+  - If unset, the backend uses Gemini when a key is present and mock mode when
+    no key is present.
+
+If `SNAPINSIGHT_ANALYSIS_MODE=gemini` is set without `GEMINI_API_KEY`, the API
+returns a `mock_fallback` response with a safe configuration warning instead of
+crashing. Gemini provider failures, timeouts, safety blocks, quota errors, or
+invalid structured output also return `mock_fallback` with a user-safe warning.
+Gemini calls may incur provider usage costs. Use mock mode for local UI work
+when real analysis is not needed.
+
+Privacy: in Gemini mode, image bytes are sent to Gemini for processing but are
+not stored by the SnapInsight backend. The backend does not persist uploaded
+images in any mode.
 
 ## Endpoints
 
@@ -91,7 +123,9 @@ The endpoint:
 - Requires `content_type` to start with `image/`.
 - Reads the upload into memory and rejects files larger than 10MB.
 - Does not save or persist the image.
-- Returns a mock/no-AI response with `mode: "mock"` and `model: "none"`.
+- Returns the stable analysis response contract.
+- Uses `mode: "mock"`, `mode: "gemini"`, or `mode: "mock_fallback"`.
+- Keeps `citations: []` until RAG/Open Food Facts is implemented.
 
 Example response shape:
 
@@ -141,8 +175,7 @@ Example response shape:
 }
 ```
 
-`latency_ms` is measured with `time.monotonic()` for the mock request and will
-vary by request.
+`latency_ms` is measured with `time.monotonic()` and will vary by request.
 
 ## Validation examples
 
@@ -172,6 +205,6 @@ Expected result: `413` with a file-too-large message.
 
 ## MIME validation limitation
 
-For Block 3A, `content_type.startswith("image/")` is intentionally sufficient.
+For the current backend blocks, `content_type.startswith("image/")` is intentionally sufficient.
 This value is client-declared and is not verified against file magic bytes.
 Magic-byte validation is a future hardening step.
