@@ -31,6 +31,8 @@ const EvidenceGraphFlow = dynamic(
 
 interface EvidenceGraphPanelProps {
   analysis: AnalysisResponse
+  /** Optional note when graph reflects a specific analysis context (e.g. session). */
+  graphNote?: string | null
 }
 
 function getBackendLabel(backend: ProductGraphResponse["graph_backend"]): string {
@@ -49,7 +51,7 @@ function pathsForNode(
   )
 }
 
-export function EvidenceGraphPanel({ analysis }: EvidenceGraphPanelProps) {
+export function EvidenceGraphPanel({ analysis, graphNote }: EvidenceGraphPanelProps) {
   const [expanded, setExpanded] = useState(() => {
     if (typeof window === "undefined") return false
     return window.matchMedia("(min-width: 768px)").matches
@@ -132,6 +134,9 @@ export function EvidenceGraphPanel({ analysis }: EvidenceGraphPanelProps) {
 
       {expanded && (
         <div className="space-y-4 border-t border-white/5 px-5 pb-5">
+          {graphNote && (
+            <p className="text-xs text-muted-foreground">{graphNote}</p>
+          )}
           {loading && (
             <div className="flex h-[320px] items-center justify-center rounded-2xl border border-white/10 bg-slate-950/60">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
