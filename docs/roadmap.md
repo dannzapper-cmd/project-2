@@ -60,6 +60,7 @@ Delivery is organized into **blocks**. Block count is not rigid: blocks may be c
 ## Block 7 — Contextual chat
 
 - Chat thread scoped to current product context and retrieval results.
+- **Block 7/8 status:** Contextual product chat and browser-only Voice Lite added; no server audio, persistence, or Gemini Live.
 
 ## Block 8 — Voice interaction
 

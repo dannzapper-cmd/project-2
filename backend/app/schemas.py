@@ -104,7 +104,7 @@ class ResponseMeta(BaseModel):
 
 class AnalyzeImageResponse(BaseModel):
     request_id: str
-    mode: Literal["mock", "gemini", "mock_fallback"]
+    mode: Literal["mock", "gemini", "mock_fallback", "error"]
     status: Literal["completed"]
     product: ProductSummary
     insights: list[Insight]
@@ -125,3 +125,22 @@ class AnalyzeImageResponse(BaseModel):
     retrieved_at: datetime | None = None
     source_trace: list[str] = Field(default_factory=list)
     product_enrichment: ProductEnrichment | None = None
+
+class ChatMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str
+
+
+class ProductChatRequest(BaseModel):
+    analysis: AnalyzeImageResponse
+    messages: list[ChatMessage] = Field(default_factory=list)
+    question: str
+
+
+class ProductChatResponse(BaseModel):
+    answer: str
+    mode: Literal["gemini", "mock", "mock_fallback", "error"]
+    citations_used: list[Citation] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    request_id: str
+    latency_ms: int = Field(ge=0)
