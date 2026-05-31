@@ -78,9 +78,9 @@ export function GeminiLivePanel({ className }: { className?: string }) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const websocketRef = useRef<WebSocket | null>(null)
   const mediaStreamRef = useRef<MediaStream | null>(null)
-  const frameTimerRef = useRef<ReturnType<typeof window.setInterval> | null>(null)
-  const maxSessionTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null)
-  const elapsedTimerRef = useRef<ReturnType<typeof window.setInterval> | null>(null)
+  const frameTimerRef = useRef<number | null>(null)
+  const maxSessionTimerRef = useRef<number | null>(null)
+  const elapsedTimerRef = useRef<number | null>(null)
   const audioInputContextRef = useRef<AudioContext | null>(null)
   const audioOutputContextRef = useRef<AudioContext | null>(null)
   const audioProcessorRef = useRef<ScriptProcessorNode | null>(null)
@@ -110,8 +110,22 @@ export function GeminiLivePanel({ className }: { className?: string }) {
   }, [])
 
   useEffect(() => {
-    void refreshConfig()
-  }, [refreshConfig])
+    let active = true
+    getGeminiLiveConfig()
+      .then((nextConfig) => {
+        if (!active) return
+        setConfig(nextConfig)
+        setUiState("idle")
+      })
+      .catch(() => {
+        if (!active) return
+        setUiState("error")
+        setErrorMessage("Could not load Live mode configuration.")
+      })
+    return () => {
+      active = false
+    }
+  }, [])
 
   const sendTelemetry = useCallback(
     (event: Parameters<typeof sendGeminiLiveTelemetry>[0]["event"], overrides = {}) => {
@@ -208,7 +222,9 @@ export function GeminiLivePanel({ className }: { className?: string }) {
       const samples = pcm16Base64ToFloat32(base64)
       const sampleRate = getAudioSampleRate(mimeType)
       const buffer = context.createBuffer(1, samples.length, sampleRate)
-      buffer.copyToChannel(samples, 0)
+      const channelData = new Float32Array(samples.length)
+      channelData.set(samples)
+      buffer.copyToChannel(channelData, 0)
       const source = context.createBufferSource()
       source.buffer = buffer
       source.connect(context.destination)

@@ -133,8 +133,8 @@ describe("Gemini Live client helpers", () => {
     cleanupGeminiLiveHandles({
       websocket: { readyState: 1, close },
       mediaStream: { getTracks: () => [{ stop }] },
-      frameTimer: 1 as unknown as ReturnType<typeof window.setInterval>,
-      maxSessionTimer: 2 as unknown as ReturnType<typeof window.setTimeout>,
+      frameTimer: 1,
+      maxSessionTimer: 2,
       audioContext: null,
     })
 

@@ -10,8 +10,8 @@ export interface GeminiLiveSetupMessage {
 export interface GeminiLiveHandles {
   websocket?: Pick<WebSocket, "close" | "readyState"> | null
   mediaStream?: Pick<MediaStream, "getTracks"> | null
-  frameTimer?: ReturnType<typeof window.setInterval> | null
-  maxSessionTimer?: ReturnType<typeof window.setTimeout> | null
+  frameTimer?: number | null
+  maxSessionTimer?: number | null
   audioContext?: Pick<AudioContext, "close"> | null
 }
 

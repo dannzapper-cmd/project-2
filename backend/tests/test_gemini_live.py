@@ -117,7 +117,7 @@ def test_live_token_uses_v1alpha_constraints_and_exposes_no_secrets(monkeypatch)
     assert captured["http_options"] == {"api_version": "v1alpha"}
     config = captured["config"]
     assert getattr(config, "uses") == 1
-    assert getattr(config, "http_options") == {"api_version": "v1alpha"}
+    assert getattr(config.http_options, "api_version") == "v1alpha"
 
     now = datetime.now(timezone.utc)
     new_session_delta = (config.new_session_expire_time - now).total_seconds()
