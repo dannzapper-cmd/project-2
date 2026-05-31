@@ -9,8 +9,8 @@ CI, and controlled demo fallback.
 - FastAPI image-analysis endpoint with mock and Gemini modes.
 - Gemini calls are server-side only and required for real analysis.
 - Mock fallback is opt-in and visibly labeled when enabled.
-- No RAG or Open Food Facts retrieval.
-- No real citations yet; `citations` remains an empty list.
+- OpenFoodFacts grounding provides the first citation foundation when a conservative match is available.
+- No RAG, vector database, cache, or local product database yet.
 - No database, cache, auth, storage, or deployment configuration.
 - Uploaded image bytes are read for validation and analysis only; they are never
   saved to disk, database, localStorage, sessionStorage, or remote storage.
@@ -115,9 +115,10 @@ The endpoint:
 - Requires `content_type` to start with `image/`.
 - Reads the upload into memory and rejects files larger than 10MB.
 - Does not save or persist the image.
+- Attempts OpenFoodFacts grounding after successful mock/Gemini analysis.
 - Returns the stable analysis response contract.
 - Uses `mode: "mock"`, `mode: "gemini"`, or `mode: "mock_fallback"`.
-- Keeps `citations: []` until RAG/Open Food Facts is implemented.
+- Returns `grounding_status` and OpenFoodFacts citations when available.
 
 Example response shape:
 
@@ -168,6 +169,10 @@ Example response shape:
 ```
 
 `latency_ms` is measured with `time.monotonic()` and will vary by request.
+
+## OpenFoodFacts grounding
+
+OpenFoodFacts is the first citation source for SnapInsight. It is community-contributed, so results are supplementary and may be incomplete. Barcode matches are treated as grounded; name-based matches are partial matches only. SnapInsight does not provide medical diagnosis or absolute health claims from OpenFoodFacts data. No uploaded images or OpenFoodFacts responses are stored, and no database/vector DB is added in this block.
 
 ## Validation examples
 

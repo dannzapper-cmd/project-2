@@ -2,12 +2,13 @@ import logging
 import time
 
 from app.config import Settings
-from app.schemas import AnalyzeImageResponse
+from app.schemas import AnalyzeImageResponse, GroundingResult
 from app.services.gemini_analysis import (
     GeminiAnalysisError,
     analyze_image_with_gemini,
 )
 from app.services.mock_analysis import build_mock_image_analysis_response
+from app.services.openfoodfacts import OpenFoodFactsClient
 
 
 logger = logging.getLogger(__name__)
@@ -33,6 +34,26 @@ def _latency_ms(started_at: float) -> int:
     return int((time.monotonic() - started_at) * 1000)
 
 
+def _merge_grounding(
+    response: AnalyzeImageResponse, grounding: GroundingResult
+) -> AnalyzeImageResponse:
+    response.grounding_status = grounding.grounding_status
+    response.grounding_summary = grounding.grounding_summary
+    response.match_method = grounding.match_method
+    response.source_product_id = grounding.source_product_id
+    response.retrieved_at = grounding.retrieved_at
+    response.citations = grounding.citations
+    response.source_trace = grounding.source_trace
+    return response
+
+
+async def _ground_response(response: AnalyzeImageResponse) -> AnalyzeImageResponse:
+    if response.mode not in {"gemini", "mock"}:
+        return response
+
+    grounding = await OpenFoodFactsClient().ground(response.product)
+    return _merge_grounding(response, grounding)
+
 async def analyze_product_image(
     *,
     request_id: str,
@@ -43,12 +64,13 @@ async def analyze_product_image(
     settings: Settings,
 ) -> AnalyzeImageResponse:
     if settings.analysis_mode == "mock":
-        return build_mock_image_analysis_response(
+        response = build_mock_image_analysis_response(
             request_id=request_id,
             latency_ms=_latency_ms(started_at),
             api_version=api_version,
             mode="mock",
         )
+        return await _ground_response(response)
 
     if not settings.gemini_api_key:
         logger.warning(
@@ -71,7 +93,7 @@ async def analyze_product_image(
             api_version=api_version,
         )
         response.meta.latency_ms = _latency_ms(started_at)
-        return response
+        return await _ground_response(response)
     except GeminiAnalysisError as exc:
         logger.warning(
             "Gemini analysis failed",

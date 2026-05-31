@@ -53,6 +53,7 @@ Delivery is organized into **blocks**. Block count is not rigid: blocks may be c
 ## Block 6 — RAG with real data / citations
 
 - Open Food Facts ingestion or API integration.
+- **Block 5/6A status:** OpenFoodFacts grounding foundation adds conservative source matching, citations, and grounding UX; no RAG/cache/database.
 - Source cards, attribution copy, barcode / visual match pipeline.
 
 ## Block 7 — Contextual chat
