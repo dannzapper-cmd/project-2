@@ -67,6 +67,10 @@ OpenFoodFacts is the first citation and product-enrichment foundation. Its nutri
 
 Contextual chat uses only the current analysis, grounding, citations, and enrichment context and is not stored server-side. Voice Lite uses browser speech APIs only; no audio is sent to the backend. Medical diagnosis, absolute health claims, Gemini Live, server-side voice, and persistent memory remain out of scope.
 
+## Configuration note — caching, privacy, and metrics
+
+An in-memory LRU cache stores analysis responses only (hashed image-byte keys, never raw images/base64), reducing repeated latency/cost. In-memory operational counters are exposed at `/v1/metrics/summary` for demo observability — not user analytics. Client-side EXIF stripping/resizing runs before upload where supported. No database, Redis, Langfuse, Sentry, auth, or persistent storage is added; deep observability and deploy QA remain deferred to Blocks 14/15.
+
 ## Competitive positioning (informational)
 
 Many apps excel at barcode lookup (e.g. Yuka) or generic visual search (e.g. Google Lens). SnapInsight’s planned differentiation is a **transparent, cited, confidence-aware multimodal companion** for packaged products—camera-first input, grounded retrieval, and explicit uncertainty—not a claim to outperform closed products on every dimension.

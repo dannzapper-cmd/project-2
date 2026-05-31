@@ -113,7 +113,7 @@ curl -X POST http://127.0.0.1:8000/v1/analyze/image \
 The endpoint:
 
 - Requires `content_type` to start with `image/`.
-- Reads the upload into memory and rejects files larger than 10MB.
+- Reads the upload into memory and rejects files larger than `SNAPINSIGHT_MAX_IMAGE_MB` (default 8MB).
 - Does not save or persist the image.
 - Attempts OpenFoodFacts grounding after successful mock/Gemini analysis.
 - Returns the stable analysis response contract.
@@ -181,6 +181,10 @@ Product chat uses the current analysis result, grounding, citations, and enrichm
 ## Overlay and Compare Mode Lite
 
 Overlay is a visual status layer, not object detection boxes. Compare Mode Lite uses only supplied analysis, grounding, and enrichment results; it does not call Gemini or OpenFoodFacts, store images/chat/compare history, or make medical or absolute health claims.
+
+## Caching, privacy guardrails, and metrics
+
+An in-memory LRU cache (no database/Redis) reduces repeated analysis latency/cost. It stores analysis responses only, keyed by a SHA-256 hash of image bytes + mode + model version; raw images and base64 are never stored, logged, or written to disk. Errors and mock fallbacks are not cached. Defaults: `SNAPINSIGHT_CACHE_ENABLED=true`, `SNAPINSIGHT_CACHE_TTL_SECONDS=900`, `SNAPINSIGHT_CACHE_MAX_ENTRIES=50`. Uploads over `SNAPINSIGHT_MAX_IMAGE_MB` (default 8) are rejected with HTTP 413 and a friendly message. The client strips EXIF and resizes images via Canvas before upload where supported (HEIC excepted). `GET /v1/metrics/summary` exposes in-memory operational counters only (no user data); auth/rate limiting and deep observability/deploy QA are deferred to Block 14/15.
 
 ## Validation examples
 
