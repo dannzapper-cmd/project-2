@@ -5,12 +5,19 @@ from urllib.parse import quote_plus
 
 import httpx
 
-from app.schemas import Citation, GroundingResult, ProductSummary
+from app.schemas import (
+    Citation,
+    GroundingResult,
+    NutritionSummary,
+    ProductEnrichment,
+    ProductSummary,
+)
 
 
 OPENFOODFACTS_BASE_URL = "https://world.openfoodfacts.org"
 OPENFOODFACTS_TIMEOUT_SECONDS = 3.0
 OPENFOODFACTS_USER_AGENT = "SnapInsight/0.1 (visual-product-companion)"
+VALID_NUTRITION_GRADES = {"A", "B", "C", "D", "E"}
 
 FIELD_LABELS = {
     "product_name": "Product Name",
@@ -38,6 +45,30 @@ def _safe_extract(product: dict, field: str, default: str = "") -> str:
     if isinstance(value, list):
         return ", ".join(str(v) for v in value[:5])
     return str(value) if value else default
+
+
+def _safe_number(product: dict, field: str) -> str | None:
+    """
+    Extract a numeric nutrition value and return it as a display-ready string.
+    Never raises; returns None for missing, zero, or unparseable values.
+    """
+    raw = product.get("nutriments", {}).get(field)
+    if raw is None:
+        return None
+    try:
+        value = float(str(raw).replace(",", "."))
+        if value == 0:
+            return None
+        return f"{value:.1f}"
+    except (ValueError, TypeError):
+        return None
+
+
+def _normalize_tag(tag: str) -> str:
+    """Convert OpenFoodFacts tag format to a display-ready label."""
+    if ":" in tag:
+        tag = tag.split(":", 1)[1]
+    return tag.replace("-", " ").title()
 
 
 def _is_specific_name(product_name: str) -> bool:
@@ -77,7 +108,58 @@ def _truncate(value: str, max_length: int = 300) -> str:
     return value[: max_length - 3].rstrip() + "..."
 
 
-def _build_citations(product: dict, product_id: str | None) -> list[Citation]:
+def _limited_normalized_tags(product: dict, field: str, limit: int) -> list[str]:
+    value = product.get(field, [])
+    if not isinstance(value, list):
+        return []
+
+    labels: list[str] = []
+    for raw_tag in value[:limit]:
+        normalized = _normalize_tag(str(raw_tag)).strip()
+        if normalized:
+            labels.append(normalized)
+    return labels
+
+
+def _nutrition_grade(product: dict) -> str | None:
+    raw_grade = _safe_extract(product, "nutrition_grades") or _safe_extract(
+        product, "nutriscore_grade"
+    )
+    grade = raw_grade.strip().upper()
+    return grade if grade in VALID_NUTRITION_GRADES else None
+
+
+def _nutrition_summary(product: dict) -> NutritionSummary | None:
+    summary = NutritionSummary(
+        energy_kcal_100g=_safe_number(product, "energy-kcal_100g")
+        or _safe_number(product, "energy-kcal"),
+        sugars_100g=_safe_number(product, "sugars_100g"),
+        fat_100g=_safe_number(product, "fat_100g"),
+        saturated_fat_100g=_safe_number(product, "saturated-fat_100g"),
+        proteins_100g=_safe_number(product, "proteins_100g"),
+        salt_100g=_safe_number(product, "salt_100g"),
+    )
+    return summary if summary.has_any else None
+
+
+def _nutrition_citation_value(summary: NutritionSummary) -> str:
+    parts = []
+    if summary.energy_kcal_100g:
+        parts.append(f"Energy {summary.energy_kcal_100g}kcal")
+    if summary.sugars_100g:
+        parts.append(f"Sugars {summary.sugars_100g}g")
+    if summary.fat_100g:
+        parts.append(f"Fat {summary.fat_100g}g")
+    if summary.saturated_fat_100g:
+        parts.append(f"Saturated fat {summary.saturated_fat_100g}g")
+    if summary.proteins_100g:
+        parts.append(f"Protein {summary.proteins_100g}g")
+    if summary.salt_100g:
+        parts.append(f"Salt {summary.salt_100g}g")
+    return " - ".join(parts)
+
+
+def _build_base_citations(product: dict, product_id: str | None) -> list[Citation]:
     product_name = _product_name(product) or "OpenFoodFacts product"
     url = _product_url(product, product_id)
     values = {
@@ -105,6 +187,96 @@ def _build_citations(product: dict, product_id: str | None) -> list[Citation]:
             )
         )
     return citations
+
+
+def _build_product_enrichment(
+    product: dict, status: str, product_id: str | None
+) -> tuple[ProductEnrichment | None, list[Citation]]:
+    if status not in {"grounded", "partial_match"}:
+        return None, []
+
+    product_name = _product_name(product) or "OpenFoodFacts product"
+    url = _product_url(product, product_id)
+    nutrition_summary = _nutrition_summary(product)
+    nutrition_grade = _nutrition_grade(product)
+    labels = _limited_normalized_tags(product, "labels_tags", 5)
+    additives = _limited_normalized_tags(product, "additives_tags", 8)
+
+    if not any([nutrition_summary, nutrition_grade, labels, additives]):
+        return None, []
+
+    notes = [
+        "Nutrition values are per 100g when available.",
+        "OpenFoodFacts data is community-contributed and may be incomplete.",
+    ]
+    if nutrition_summary and not all(
+        [
+            nutrition_summary.energy_kcal_100g,
+            nutrition_summary.sugars_100g,
+            nutrition_summary.fat_100g,
+            nutrition_summary.saturated_fat_100g,
+            nutrition_summary.proteins_100g,
+            nutrition_summary.salt_100g,
+        ]
+    ):
+        notes.append("Some nutrition fields are missing from the source record.")
+    if additives:
+        notes.append("Additive names are sourced from OpenFoodFacts community data.")
+
+    enrichment = ProductEnrichment(
+        nutrition_summary=nutrition_summary,
+        nutrition_grade=nutrition_grade,
+        labels=labels,
+        additives=additives,
+        enrichment_source_confidence="high"
+        if status == "grounded"
+        else "medium",
+        enrichment_notes=notes,
+    )
+
+    citations: list[Citation] = []
+    if nutrition_summary:
+        citations.append(
+            Citation(
+                title=product_name,
+                field="nutriments",
+                field_label="Nutrition",
+                value=_nutrition_citation_value(nutrition_summary),
+                url=url,
+            )
+        )
+    if nutrition_grade:
+        citations.append(
+            Citation(
+                title=product_name,
+                field="nutrition_grades",
+                field_label="Nutrition Grade",
+                value=f"Nutri-Score: {nutrition_grade}",
+                url=url,
+            )
+        )
+    if labels:
+        citations.append(
+            Citation(
+                title=product_name,
+                field="labels_tags",
+                field_label="Labels",
+                value=" - ".join(labels[:3]),
+                url=url,
+            )
+        )
+    if additives:
+        citations.append(
+            Citation(
+                title=product_name,
+                field="additives_tags",
+                field_label="Additives",
+                value=" - ".join(additives[:4]),
+                url=url,
+            )
+        )
+
+    return enrichment, citations
 
 
 def _no_match(summary: str, trace: list[str] | None = None) -> GroundingResult:
@@ -156,7 +328,7 @@ class OpenFoodFactsClient:
     async def ground(self, product: ProductSummary) -> GroundingResult:
         # Contract: this method never raises. All errors produce
         # grounding_status="grounding_unavailable".
-        # Privacy: OpenFoodFacts responses are not persisted.
+        # Privacy: OpenFoodFacts responses are not persisted beyond this request.
         try:
             return await self._ground(product)
         except (httpx.HTTPError, ValueError, TypeError):
@@ -256,12 +428,17 @@ class OpenFoodFactsClient:
         trace: list[str],
     ) -> GroundingResult:
         product_id = _product_id(product, fallback_product_id)
+        citations = _build_base_citations(product, product_id)
+        product_enrichment, enrichment_citations = _build_product_enrichment(
+            product, status, product_id
+        )
         return GroundingResult(
             grounding_status=status,
             grounding_summary=summary,
             match_method=match_method,
             source_product_id=product_id,
             retrieved_at=datetime.now(UTC),
-            citations=_build_citations(product, product_id),
+            citations=citations + enrichment_citations,
             source_trace=trace,
+            product_enrichment=product_enrichment,
         )

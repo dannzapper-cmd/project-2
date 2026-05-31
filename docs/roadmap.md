@@ -54,6 +54,7 @@ Delivery is organized into **blocks**. Block count is not rigid: blocks may be c
 
 - Open Food Facts ingestion or API integration.
 - **Block 5/6A status:** OpenFoodFacts grounding foundation adds conservative source matching, citations, and grounding UX; no RAG/cache/database.
+- **Block 5/6B status:** Product card enrichment surfaces OFF nutrition, grade, labels, and additives from matched source records without cache/database.
 - Source cards, attribution copy, barcode / visual match pipeline.
 
 ## Block 7 — Contextual chat

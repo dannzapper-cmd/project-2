@@ -1,6 +1,10 @@
 import { AlertTriangle, Clock, Database, ShieldCheck, Sparkles } from "lucide-react"
 
-import type { AnalysisResponse, GroundingStatus } from "@/lib/snapinsight-api"
+import type {
+  AnalysisResponse,
+  GroundingStatus,
+  NutritionSummary,
+} from "@/lib/snapinsight-api"
 
 interface MockAnalysisResultCardProps {
   result: AnalysisResponse
@@ -39,6 +43,15 @@ function getGroundingBadgeClass(status: GroundingStatus): string {
   return "border-white/10 bg-slate-800/70 text-muted-foreground"
 }
 
+function getGradeClass(grade: string): string {
+  const normalized = grade.toUpperCase()
+  if (normalized === "A") return "border-emerald-500/30 bg-emerald-500/15 text-emerald-300"
+  if (normalized === "B") return "border-lime-500/30 bg-lime-500/15 text-lime-300"
+  if (normalized === "C") return "border-yellow-500/30 bg-yellow-500/15 text-yellow-300"
+  if (normalized === "D") return "border-orange-500/30 bg-orange-500/15 text-orange-300"
+  return "border-red-500/30 bg-red-500/15 text-red-300"
+}
+
 function formatScore(score: number): string {
   return `${Math.round(score * 100)}%`
 }
@@ -53,12 +66,34 @@ function getGroundingMessage(result: AnalysisResponse): string | null {
   return result.grounding_summary || null
 }
 
+function getNutritionRows(summary: NutritionSummary | null | undefined) {
+  if (!summary) return []
+
+  return [
+    ["Energy", summary.energy_kcal_100g, "kcal"],
+    ["Sugars", summary.sugars_100g, "g"],
+    ["Fat", summary.fat_100g, "g"],
+    ["Saturated fat", summary.saturated_fat_100g, "g"],
+    ["Protein", summary.proteins_100g, "g"],
+    ["Salt", summary.salt_100g, "g"],
+  ].filter((row): row is [string, string, string] => Boolean(row[1]))
+}
+
 export function MockAnalysisResultCard({ result }: MockAnalysisResultCardProps) {
   const groundingMessage = getGroundingMessage(result)
   const citationHeading =
     result.mode === "mock_fallback" && result.citations.length > 0
       ? "Source data (community)"
       : "Citations"
+  const enrichment = result.product_enrichment
+  const nutritionRows = getNutritionRows(enrichment?.nutrition_summary)
+  const hasEnrichment = Boolean(
+    enrichment &&
+      (nutritionRows.length > 0 ||
+        enrichment.nutrition_grade ||
+        enrichment.labels.length > 0 ||
+        enrichment.additives.length > 0)
+  )
 
   return (
     <section className="glass-card mt-5 p-5" aria-live="polite">
@@ -194,6 +229,82 @@ export function MockAnalysisResultCard({ result }: MockAnalysisResultCardProps) 
           OpenFoodFacts data is community-contributed and may be incomplete.
         </p>
       </div>
+
+      {hasEnrichment && enrichment && (
+        <div className="mb-4 rounded-2xl border border-white/5 bg-slate-800/40 p-3">
+          <h3 className="mb-3 text-sm font-medium text-foreground">
+            Product details
+          </h3>
+
+          {nutritionRows.length > 0 && (
+            <div className="mb-4 grid gap-2 text-sm sm:grid-cols-2">
+              {nutritionRows.map(([label, value, unit]) => (
+                <div
+                  key={label}
+                  className="flex items-center justify-between rounded-xl bg-slate-900/50 px-3 py-2"
+                >
+                  <span className="text-muted-foreground">{label}</span>
+                  <span className="font-medium text-foreground">
+                    {value} {unit}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {enrichment.nutrition_grade && (
+            <div className="mb-4">
+              <p className="mono-label mb-2 text-muted-foreground">Nutri-Score</p>
+              <span
+                className={`inline-flex h-9 w-9 items-center justify-center rounded-full border text-sm font-semibold ${getGradeClass(enrichment.nutrition_grade)}`}
+              >
+                {enrichment.nutrition_grade}
+              </span>
+            </div>
+          )}
+
+          {enrichment.labels.length > 0 && (
+            <div className="mb-4">
+              <p className="mono-label mb-2 text-muted-foreground">Labels</p>
+              <div className="flex flex-wrap gap-2">
+                {enrichment.labels.slice(0, 5).map((label) => (
+                  <span
+                    key={label}
+                    className="rounded-full border border-white/10 bg-slate-900/60 px-3 py-1 text-xs text-muted-foreground"
+                  >
+                    {label}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {enrichment.additives.length > 0 && (
+            <div className="mb-4">
+              <p className="mono-label mb-2 text-muted-foreground">Additives</p>
+              <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+                {enrichment.additives.slice(0, 8).map((additive) => (
+                  <li key={additive}>{additive}</li>
+                ))}
+              </ul>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Additive names sourced from OpenFoodFacts community data.
+              </p>
+            </div>
+          )}
+
+          {enrichment.enrichment_source_confidence === "medium" && (
+            <p className="mb-3 text-xs text-muted-foreground">
+              Source matched by product name. Verify with product label.
+            </p>
+          )}
+
+          <p className="text-xs text-muted-foreground">
+            Nutrition and label data from OpenFoodFacts. Community-contributed.
+            May be incomplete.
+          </p>
+        </div>
+      )}
 
       <div className="mb-4 rounded-2xl border border-white/5 bg-slate-800/40 p-3">
         <div className="mb-2 flex items-center gap-2 text-muted-foreground">

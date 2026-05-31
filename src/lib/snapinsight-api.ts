@@ -22,6 +22,24 @@ export type GroundingStatus =
 
 export type MatchMethod = "barcode" | "name_brand" | "name_only" | "none"
 
+export interface NutritionSummary {
+  energy_kcal_100g: string | null
+  sugars_100g: string | null
+  fat_100g: string | null
+  saturated_fat_100g: string | null
+  proteins_100g: string | null
+  salt_100g: string | null
+}
+
+export interface ProductEnrichment {
+  nutrition_summary: NutritionSummary | null
+  nutrition_grade: string | null
+  labels: string[]
+  additives: string[]
+  enrichment_source_confidence: string | null
+  enrichment_notes: string[]
+}
+
 export interface AnalysisInsight {
   title: string
   body: string
@@ -65,6 +83,7 @@ export interface AnalysisResponse {
   source_product_id: string | null
   retrieved_at: string | null
   source_trace: string[]
+  product_enrichment: ProductEnrichment | null
 }
 
 interface ApiErrorBody {
