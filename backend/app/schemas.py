@@ -144,3 +144,31 @@ class ProductChatResponse(BaseModel):
     warnings: list[str] = Field(default_factory=list)
     request_id: str
     latency_ms: int = Field(ge=0)
+
+
+class CompareProductInput(BaseModel):
+    label: str
+    analysis: AnalyzeImageResponse
+
+
+class CompareProductsRequest(BaseModel):
+    product_a: CompareProductInput
+    product_b: CompareProductInput
+
+
+class CompareFieldDiff(BaseModel):
+    field: str
+    label: str
+    product_a_value: str | None = None
+    product_b_value: str | None = None
+    status: Literal["same", "different", "missing_a", "missing_b", "missing_both"]
+    note: str | None = None
+
+
+class CompareProductsResponse(BaseModel):
+    summary: str
+    differences: list[CompareFieldDiff] = Field(default_factory=list)
+    citations_used: list[Citation] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    request_id: str
+    latency_ms: int = Field(ge=0)

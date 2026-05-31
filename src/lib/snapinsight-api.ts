@@ -100,6 +100,31 @@ export interface ProductChatResponse {
   latency_ms: number
 }
 
+export type CompareStatus =
+  | "same"
+  | "different"
+  | "missing_a"
+  | "missing_b"
+  | "missing_both"
+
+export interface CompareFieldDiff {
+  field: string
+  label: string
+  product_a_value: string | null
+  product_b_value: string | null
+  status: CompareStatus
+  note: string | null
+}
+
+export interface CompareProductsResponse {
+  summary: string
+  differences: CompareFieldDiff[]
+  citations_used: AnalysisCitation[]
+  warnings: string[]
+  request_id: string
+  latency_ms: number
+}
+
 interface ApiErrorBody {
   detail?: string
   error?: string
@@ -122,6 +147,26 @@ export function getApiBase(): string {
   )
 }
 
+async function getErrorDetail(
+  response: Response,
+  fallback: string
+): Promise<string> {
+  let detail = fallback
+
+  try {
+    const errorBody = (await response.json()) as ApiErrorBody
+    if (errorBody.message) {
+      detail = errorBody.message
+    } else if (errorBody.detail) {
+      detail = errorBody.detail
+    }
+  } catch {
+    // Keep the generic status message when the backend returns non-JSON.
+  }
+
+  return detail
+}
+
 export async function analyzeImage(
   file: File,
   signal?: AbortSignal
@@ -136,20 +181,12 @@ export async function analyzeImage(
   })
 
   if (!response.ok) {
-    let detail = `Analysis request failed with status ${response.status}.`
-
-    try {
-      const errorBody = (await response.json()) as ApiErrorBody
-      if (errorBody.message) {
-        detail = errorBody.message
-      } else if (errorBody.detail) {
-        detail = errorBody.detail
-      }
-    } catch {
-      // Keep the generic status message when the backend returns non-JSON.
-    }
-
-    throw new Error(detail)
+    throw new Error(
+      await getErrorDetail(
+        response,
+        `Analysis request failed with status ${response.status}.`
+      )
+    )
   }
 
   return response.json() as Promise<AnalysisResponse>
@@ -171,21 +208,43 @@ export async function chatWithProduct(
   })
 
   if (!response.ok) {
-    let detail = `Chat request failed with status ${response.status}.`
-
-    try {
-      const errorBody = (await response.json()) as ApiErrorBody
-      if (errorBody.message) {
-        detail = errorBody.message
-      } else if (errorBody.detail) {
-        detail = errorBody.detail
-      }
-    } catch {
-      // Keep the generic status message when the backend returns non-JSON.
-    }
-
-    throw new Error(detail)
+    throw new Error(
+      await getErrorDetail(
+        response,
+        `Chat request failed with status ${response.status}.`
+      )
+    )
   }
 
   return response.json() as Promise<ProductChatResponse>
+}
+
+export async function compareProducts(
+  productA: AnalysisResponse,
+  productB: AnalysisResponse,
+  signal?: AbortSignal
+): Promise<CompareProductsResponse> {
+  const response = await fetch(`${getApiBase()}/v1/compare/products`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    // Compare sends existing analysis JSON only; no image or audio bytes.
+    body: JSON.stringify({
+      product_a: { label: "A", analysis: productA },
+      product_b: { label: "B", analysis: productB },
+    }),
+    signal,
+  })
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorDetail(
+        response,
+        `Compare request failed with status ${response.status}.`
+      )
+    )
+  }
+
+  return response.json() as Promise<CompareProductsResponse>
 }

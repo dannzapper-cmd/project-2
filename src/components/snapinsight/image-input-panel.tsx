@@ -11,6 +11,7 @@ import {
 } from "@/lib/snapinsight-api"
 import { MockAnalysisResultCard } from "@/components/snapinsight/mock-analysis-result-card"
 import { ProductChatPanel } from "@/components/snapinsight/product-chat-panel"
+import { ProductComparePanel } from "@/components/snapinsight/product-compare-panel"
 
 function getStatusLabel(
   hasImage: boolean,
@@ -30,7 +31,68 @@ interface ImageInputPanelProps {
 }
 
 const ANALYSIS_PRIVACY_COPY =
-  "Image is sent to the local analysis service for processing. The service does not store your image. No AI model is called yet."
+  "Image is sent to the analysis service for processing. The service does not store your image; compare uses analysis results only."
+
+function getAnalysisModeLabel(mode: AnalysisResponse["mode"]): string {
+  if (mode === "gemini") return "AI Analysis"
+  if (mode === "mock_fallback") return "Mock Fallback"
+  return "Mock"
+}
+
+function formatConfidence(result: AnalysisResponse): string {
+  const { label, score } = result.product.confidence
+  return `${label} · ${Math.round(score * 100)}%`
+}
+
+function hasNutritionData(result: AnalysisResponse): boolean {
+  const summary = result.product_enrichment?.nutrition_summary
+  if (!summary) return false
+  return Object.values(summary).some((value) => Boolean(value))
+}
+
+function sourceConfidenceNote(result: AnalysisResponse): string | null {
+  const confidence = result.product_enrichment?.enrichment_source_confidence
+  if (confidence === "high") return "Source confidence: barcode-based source match"
+  if (confidence === "medium") return "Source confidence: name-based source match"
+  return null
+}
+
+function PreviewAnalysisOverlay({ result }: { result: AnalysisResponse }) {
+  const chips = [
+    getAnalysisModeLabel(result.mode),
+    `Confidence ${formatConfidence(result)}`,
+    result.grounding_status,
+  ]
+
+  if (hasNutritionData(result)) chips.push("Nutrition data")
+  if ((result.product_enrichment?.labels.length ?? 0) > 0) chips.push("Labels")
+  if ((result.product_enrichment?.additives.length ?? 0) > 0) chips.push("Additives")
+  if (result.warnings.length > 0) chips.push(`${result.warnings.length} warning(s)`)
+
+  const note = sourceConfidenceNote(result)
+
+  return (
+    <div className="pointer-events-none absolute inset-x-3 bottom-3 z-10">
+      <div className="max-w-full rounded-2xl border border-white/10 bg-slate-950/65 p-3 shadow-2xl backdrop-blur-md">
+        <div className="flex flex-wrap gap-2">
+          {chips.map((chip) => (
+            <span
+              key={chip}
+              className="rounded-full border border-white/10 bg-white/10 px-2.5 py-1 text-[11px] font-medium text-slate-100"
+            >
+              {chip}
+            </span>
+          ))}
+        </div>
+        {note && (
+          <p className="mt-2 text-[11px] leading-relaxed text-slate-300">
+            {note}
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
 
 function isAbortError(err: unknown): boolean {
   return err instanceof Error && err.name === "AbortError"
@@ -53,6 +115,12 @@ export function ImageInputPanel({ className }: ImageInputPanelProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
   const [analysisResult, setAnalysisResult] =
+    useState<AnalysisResponse | null>(null)
+  const [compareProductA, setCompareProductA] =
+    useState<AnalysisResponse | null>(null)
+  const [compareProductB, setCompareProductB] =
+    useState<AnalysisResponse | null>(null)
+  const [compareReplacementPrompt, setCompareReplacementPrompt] =
     useState<AnalysisResponse | null>(null)
   const [analysisError, setAnalysisError] = useState<string | null>(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
@@ -89,6 +157,47 @@ export function ImageInputPanel({ className }: ImageInputPanelProps) {
     setAnalysisResult(null)
     setAnalysisError(null)
   }, [abortActiveAnalysis])
+
+  const registerAnalysisForCompare = useCallback(
+    (result: AnalysisResponse) => {
+      // Compare slots are in-memory only: first new result fills A, second fills B,
+      // and later analyses prompt instead of replacing saved products.
+      if (!compareProductA) {
+        setCompareProductA(result)
+        setCompareReplacementPrompt(null)
+        return
+      }
+      if (!compareProductB) {
+        setCompareProductB(result)
+        setCompareReplacementPrompt(null)
+        return
+      }
+      setCompareReplacementPrompt(result)
+    },
+    [compareProductA, compareProductB]
+  )
+
+  const handleSaveCompareA = useCallback((result: AnalysisResponse) => {
+    setCompareProductA(result)
+    setCompareReplacementPrompt(null)
+  }, [])
+
+  const handleSaveCompareB = useCallback((result: AnalysisResponse) => {
+    setCompareProductB(result)
+    setCompareReplacementPrompt(null)
+  }, [])
+
+  const handleReplaceCompareA = useCallback(() => {
+    if (!compareReplacementPrompt) return
+    setCompareProductA(compareReplacementPrompt)
+    setCompareReplacementPrompt(null)
+  }, [compareReplacementPrompt])
+
+  const handleReplaceCompareB = useCallback(() => {
+    if (!compareReplacementPrompt) return
+    setCompareProductB(compareReplacementPrompt)
+    setCompareReplacementPrompt(null)
+  }, [compareReplacementPrompt])
 
   useEffect(() => {
     return () => {
@@ -160,6 +269,7 @@ export function ImageInputPanel({ className }: ImageInputPanelProps) {
       const result = await analyzeImage(imageFile, controller.signal)
       if (controller.signal.aborted) return
       setAnalysisResult(result)
+      registerAnalysisForCompare(result)
     } catch (err) {
       if (isAbortError(err)) {
         return
@@ -174,7 +284,7 @@ export function ImageInputPanel({ className }: ImageInputPanelProps) {
         setIsAnalyzing(false)
       }
     }
-  }, [abortActiveAnalysis, imageFile])
+  }, [abortActiveAnalysis, imageFile, registerAnalysisForCompare])
 
   return (
     <div className={cn("flex flex-col", className)}>
@@ -220,6 +330,10 @@ export function ImageInputPanel({ className }: ImageInputPanelProps) {
             alt="Selected product preview"
             className="absolute inset-0 h-full w-full object-contain bg-slate-950/80"
           />
+        )}
+
+        {hasImage && analysisResult && (
+          <PreviewAnalysisOverlay result={analysisResult} />
         )}
 
         {!hasImage && !isCameraActive && (
@@ -350,6 +464,19 @@ export function ImageInputPanel({ className }: ImageInputPanelProps) {
       {analysisResult && (
         <>
           <MockAnalysisResultCard result={analysisResult} />
+          <ProductComparePanel
+            currentResult={analysisResult}
+            productA={compareProductA}
+            productB={compareProductB}
+            replacementPrompt={compareReplacementPrompt}
+            onSaveA={handleSaveCompareA}
+            onSaveB={handleSaveCompareB}
+            onClearA={() => setCompareProductA(null)}
+            onClearB={() => setCompareProductB(null)}
+            onReplaceA={handleReplaceCompareA}
+            onReplaceB={handleReplaceCompareB}
+            onKeepBoth={() => setCompareReplacementPrompt(null)}
+          />
           <ProductChatPanel analysis={analysisResult} />
         </>
       )}

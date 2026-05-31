@@ -178,6 +178,10 @@ OpenFoodFacts is the first citation and product-enrichment source for SnapInsigh
 
 Product chat uses the current analysis result, grounding, citations, and enrichment context only; no image bytes or raw OpenFoodFacts payloads are sent. Chat is stateless and not stored server-side. Voice Lite is browser-only speech recognition/synthesis; no audio is sent to the backend. Medical diagnosis, absolute health claims, Gemini Live, server-side voice, and persistent memory are deferred.
 
+## Overlay and Compare Mode Lite
+
+Overlay is a visual status layer, not object detection boxes. Compare Mode Lite uses only supplied analysis, grounding, and enrichment results; it does not call Gemini or OpenFoodFacts, store images/chat/compare history, or make medical or absolute health claims.
+
 ## Validation examples
 
 Reject a non-image upload:
