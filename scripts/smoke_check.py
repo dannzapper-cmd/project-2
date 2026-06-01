@@ -19,7 +19,7 @@ from typing import Any
 
 
 DEFAULT_BACKEND_BASE_URL = "http://127.0.0.1:8000"
-TIMEOUT_SECONDS = 12
+TIMEOUT_SECONDS = 20
 REQUEST_ATTEMPTS = 3
 RETRY_DELAY_SECONDS = 2
 FORBIDDEN_RESPONSE_FRAGMENTS = (
@@ -55,7 +55,7 @@ def _open_with_retries(request: urllib.request.Request):
             if exc.code < 500 or attempt == REQUEST_ATTEMPTS:
                 raise
             last_error = exc
-        except urllib.error.URLError as exc:
+        except (TimeoutError, urllib.error.URLError) as exc:
             if attempt == REQUEST_ATTEMPTS:
                 raise
             last_error = exc
