@@ -117,6 +117,15 @@ must verify `/health`, `/v1/metrics/summary`, `/v1/live/config`, safe disabled
 Gemini Live status, and optional CORS preflight without requiring real Gemini or
 Gemini Live activation.
 
+## Configuration note — Block 20A product package
+
+Block 20A adds the final product documentation package (README, case study,
+business case, metrics framework, demo guide, limitations, cost/privacy,
+scaling roadmap, mobile packaging, positioning, portfolio pitch, screenshots
+checklist). It links from [README.md](./README.md) and does not change runtime
+behavior, activate Gemini/Gemini Live, or add media assets. See
+[docs/roadmap.md](./docs/roadmap.md) Block 20A.
+
 ## Competitive positioning (informational)
 
 Many apps excel at barcode lookup (e.g. Yuka) or generic visual search (e.g. Google Lens). SnapInsight’s planned differentiation is a **transparent, cited, confidence-aware multimodal companion** for packaged products—camera-first input, grounded retrieval, and explicit uncertainty—not a claim to outperform closed products on every dimension.

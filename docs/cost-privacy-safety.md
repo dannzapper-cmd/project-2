@@ -1,96 +1,131 @@
 # SnapInsight — Cost, Privacy, and Safety
 
-> **Status:** Policies and controls described here are **planned**. Block 0 establishes principles; implementation lands in later blocks.
+**Status:** Implemented controls in production paths, plus planned hardening for scale. This document describes what the deployed system does today and what remains future work.
 
-## Cost controls (planned)
+---
 
-### Tier strategy
+## Analysis modes and API cost control
 
-- **Target:** Operate within free or low-cost tiers during development and early demo, using official provider documentation as the source of truth for quotas and pricing.
-- **Research note to verify:** Gemini, Supabase, Modal, Vercel, and Langfuse publish tier limits on their pricing pages—confirm current RPM/TPM, storage, and egress before each block. Do not treat secondary summaries as canonical.
+| Control | Behavior |
+|---------|----------|
+| `SNAPINSIGHT_ANALYSIS_MODE=mock` | No Gemini spend. Default for safe demos and CI. |
+| `SNAPINSIGHT_ANALYSIS_MODE=gemini` | Real multimodal calls; requires server-side `GEMINI_API_KEY`. |
+| `SNAPINSIGHT_ALLOW_MOCK_FALLBACK` | When `true`, failed Gemini can return visible `mock_fallback`; fallback responses are **not cached**. |
+| Gemini Live disabled by default | `SNAPINSIGHT_GEMINI_LIVE_ENABLED=false` blocks token minting until owner activation. |
+| Live session caps | `SNAPINSIGHT_LIVE_MAX_SESSION_SECONDS`, frame rate limits, optional access code. |
 
-### Planned mechanisms
+**Demo guidance:** Prefer `mock` for routine low-cost walkthroughs. Use `gemini` only when demonstrating real model behavior with owner approval.
 
-| Control | Purpose | Target block |
-|---------|---------|--------------|
-| Perceptual hash cache | Avoid duplicate multimodal calls for similar images | Block 11 |
-| Model routing | Flash-Lite default; stronger model on retry / low confidence | Blocks 4, 11 |
-| Request rate limits | Protect API keys and quotas | Blocks 3, 11 |
-| Session / daily caps | Prevent runaway spend in demos | Block 11 |
-| Retry with backoff | Handle transient provider errors without storms | Block 3+ |
-| Structured output | Smaller, parseable responses; fewer repair calls | Block 4 |
+---
 
-### Cost documentation rules
+## Caching (cost and latency)
 
-- Do not publish hard cost guarantees in user-facing copy.
-- Use **estimated** language tied to named official sources when discussing tiers.
-- In-app metrics (future) should show **relative** or **session** cost indicators where exact billing is unavailable.
+- In-memory LRU cache stores **successful analysis response objects only**—never raw image bytes.
+- Cache keys use a **SHA256 digest** of image bytes + analysis mode + model version + key version (one-way; bytes are not recoverable from the key).
+- **Fallback results are not cached** so a transient outage cannot pin mock output for the full TTL.
+- Cache is process-local: resets on restart; not shared across Render instances.
+- Tunables: `SNAPINSIGHT_CACHE_ENABLED`, `SNAPINSIGHT_CACHE_TTL_SECONDS`, `SNAPINSIGHT_CACHE_MAX_ENTRIES`.
 
-## Privacy (planned)
+Perceptual/near-duplicate caching remains a future optimization (see [scaling-roadmap.md](./scaling-roadmap.md)).
 
-### Images
+---
 
-- **Strip EXIF** metadata on client or server before any storage or model call (future block).
-- **Ephemeral processing:** analyze and discard; persist only perceptual hash or derived features for cache—not raw photos by default.
-- **No unnecessary retention:** debug image retention requires explicit dev flag and short TTL.
+## What is sent where
 
-### Data collection
+| Data | Destination | Stored by SnapInsight? |
+|------|-------------|------------------------|
+| Product image (upload/capture) | Backend for analysis; Gemini when in `gemini` mode | **No** persistent image storage |
+| Open Food Facts lookups | Public OFF API from backend | **No** raw OFF payload persistence |
+| Chat questions | Backend orchestration (Gemini when enabled) | **No** server-side chat history DB |
+| Voice Lite audio | Browser speech APIs only | **Not sent** to SnapInsight backend |
+| Gemini Live A/V (when enabled) | Browser ↔ Gemini WebSocket | **No** media persistence on SnapInsight |
+| Langfuse metadata | Langfuse (optional) | Aggregate fields only (see below) |
 
-- **No PII by default:** no account required for demo; no email harvesting in v1.
-- **Minimal logs:** request IDs, hashes, latency, model ID—not image bytes in production logs.
+---
 
-### Secrets
+## What is **not** stored or logged
 
-- **API keys server-side only** (FastAPI / backend host).
-- Never commit secrets; use environment variables and platform secret stores at deploy time.
+- Raw uploaded images, audio, or video files on disk or database
+- Base64 blobs in application logs
+- Raw prompts, full chat transcripts, or user questions in Langfuse
+- Open Food Facts raw JSON in traces
+- API keys, access codes, ephemeral Live tokens, or authorization headers in traces
+- PII or personal product notes
 
-### Consent (planned UI)
+Client-side EXIF stripping/resizing runs before upload where supported (falls back to original file on failure).
 
-- Clear notice before camera use: image used for this analysis session.
-- Link to privacy policy before any data retention feature ships.
+---
 
-## Safety (planned)
+## Langfuse (optional, safe metadata only)
 
-### Content boundaries
+When `SNAPINSIGHT_LLMOPS_ENABLED=true` and Langfuse credentials are configured, each analysis request can produce a Langfuse trace containing:
 
-| Rule | Implementation direction |
-|------|---------------------------|
-| No medical diagnosis | System prompts + output filters + UI disclaimers |
-| No absolute health claims | Copy review + model instructions |
-| No counterfeit / authenticity claims | Block product copy and model outputs in this category |
-| Cite data sources | Source cards for Open Food Facts and other datasets |
-| Show uncertainty | Confidence UI, possible matches, fallback to cited RAG-only facts |
-| Graceful fallback | When model or RAG fails, explain limits and suggest retake or manual search |
+`analysis_mode` (`gemini` / `mock` / `mock_fallback`), `cache_hit` (boolean), `grounding_status`, `citations_count`, `warnings_count`, `graph_backend`, `fallback_used`, `latency_ms`, and `error_type` if applicable.
 
-### Allergens and nutrition
+Chat, compare, graph, and Live lifecycle events emit similarly bounded metadata. **No image bytes, base64, raw prompts, transcripts, API keys, or PII** are logged.
 
-- Present allergen and ingredient data as **sourced from datasets or model interpretation of the image**, with “verify on package” messaging.
-- Never state that the app is safe for a specific individual’s allergies without explicit user-owned confirmation flows (future: user preference only as hints, not guarantees).
+Tracing is **optional and non-blocking**—the app functions normally if Langfuse is disabled or misconfigured.
 
-### Prompt and eval safety
+See [llmops.md](./llmops.md).
 
-- Maintain a **safety prompt appendix** in backend config (future block).
-- Golden-set tests for refused categories: diagnosis, counterfeit, absolute health (Block 14).
+---
 
-## Open Food Facts attribution (planned)
+## Gemini Live privacy model
 
-UI will include attribution consistent with Open Food Facts terms, e.g. data under Open Database License with link to the product record. Exact strings will match [official terms](https://world.openfoodfacts.org/terms-of-use) at implementation time.
+- Backend mints **short-lived ephemeral tokens** with server-side `GEMINI_API_KEY`; browser never receives the API key.
+- Optional `SNAPINSIGHT_LIVE_ACCESS_CODE` required before token issuance when set.
+- Microphone, camera frames, and Live text go **directly to Gemini**, not through Render proxying.
+- SnapInsight receives only **aggregate lifecycle telemetry** (duration, frame counts, status)—not transcripts or media.
 
-## Provider-specific notes (verify before build)
+Default production: Live **disabled**. See [gemini-live.md](./gemini-live.md).
 
-The following are **strategic options** from initial research—not committed contracts:
+---
 
-| Provider | Role | Verify at |
-|----------|------|-----------|
-| Google Gemini | Multimodal inference | https://ai.google.dev/gemini-api/docs/pricing |
-| Open Food Facts | Primary RAG source | https://world.openfoodfacts.org/data |
-| Supabase | Optional Postgres + pgvector | https://supabase.com/pricing |
-| Modal | Optional FastAPI hosting | https://modal.com/pricing |
-| Vercel | PWA hosting | https://vercel.com/pricing |
-| Langfuse | Observability | https://langfuse.com/pricing |
+## Safety boundaries
 
-Alternatives (Render, Railway, Fly, Neon, Cloudflare R2) remain valid if quotas or terms change.
+| Rule | Implementation |
+|------|----------------|
+| No medical diagnosis | Prompts, copy, and UX disclaimers |
+| No absolute health claims | Informational framing; verify on package |
+| No counterfeit claims | Blocked by product scope |
+| Cite data sources | Open Food Facts attribution and source cards |
+| Show uncertainty | Confidence UI, modes, warnings, fallback labels |
+| User judgment | User must confirm identification and allergen decisions |
 
-## Competitive safety positioning
+Allergen and nutrition fields are presented as **sourced from datasets or model interpretation**, with explicit “check the package” messaging.
 
-SnapInsight will not claim superiority over Yuka, Google Lens, or others without evidence. Differentiation is **transparent citations, confidence UX, and multimodal camera-first flow**—not unverifiable accuracy percentages.
+---
+
+## Secrets and configuration
+
+- All API keys (`GEMINI_API_KEY`, Langfuse, Neo4j, Live access code) are **server-side only**.
+- Never commit secrets; use Render/Vercel secret stores.
+- Never place secrets in `NEXT_PUBLIC_*` frontend variables.
+
+---
+
+## Open Food Facts attribution
+
+UI and docs reference Open Food Facts under its open database terms. Product URLs and IDs are cited when matches exist. Community data quality limitations are documented in [limitations.md](./limitations.md).
+
+---
+
+## Provider cost verification
+
+Do not publish hard cost guarantees. Verify current quotas and pricing on official pages before scaling:
+
+- [Gemini API pricing](https://ai.google.dev/gemini-api/docs/pricing)
+- [Open Food Facts](https://world.openfoodfacts.org/data)
+- [Vercel pricing](https://vercel.com/pricing)
+- [Render pricing](https://render.com/pricing)
+- [Langfuse pricing](https://langfuse.com/pricing)
+- [Neo4j Aura](https://neo4j.com/pricing/)
+
+---
+
+## Related docs
+
+- [limitations.md](./limitations.md)
+- [deploy.md](./deploy.md)
+- [demo-guide.md](./demo-guide.md)
+- [llmops.md](./llmops.md)
