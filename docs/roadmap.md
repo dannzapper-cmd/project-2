@@ -140,6 +140,15 @@ Delivery is organized into **blocks**. Block count is not rigid: blocks may be c
 - **Block 19B target:** Visual polish, accessibility review, demo script polish,
   and broader product UX cleanup after the deployment path is stable.
 
+## Block 20 — Product package documentation
+
+- **Block 20A status:** Final product package documentation—premium README,
+  business brief, case study, business case, metrics framework, demo guide,
+  limitations, cost/privacy/safety, scaling roadmap, mobile packaging,
+  product positioning, portfolio pitch, and screenshots/video checklist
+  (placeholders only). Links SPEC/README to deeper docs. No runtime features,
+  Gemini/Gemini Live activation, screenshots, or video files.
+
 ## Sequencing notes
 
 - **Do not skip confidence UX (Block 5)** before marketing “accurate” identification.
