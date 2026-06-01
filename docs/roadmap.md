@@ -6,7 +6,7 @@ Delivery is organized into **blocks**. Block count is not rigid: blocks may be c
 
 - Repository documentation, SPEC, architecture, limitations, cost/privacy/safety, AI workflow.
 - Cursor rules and ignore patterns.
-- **Status:** Current block (documentation only).
+- **Status:** Completed foundation block.
 
 ## Block 1A — Frontend foundation
 
@@ -130,6 +130,15 @@ Delivery is organized into **blocks**. Block count is not rigid: blocks may be c
   tokens; the browser streams microphone audio, camera snapshots, and text
   directly to Gemini when enabled. Default deployment remains disabled, with no
   auth system, WebRTC infrastructure, media persistence, or database added.
+
+## Block 19 — Production stability and final polish
+
+- **Block 19A status:** Production stability QA hardens Vercel Production/Preview
+  and Render deployments with scoped CORS preview support, clearer deployment
+  error copy, smoke checks for health/metrics/Live config/CORS, and
+  troubleshooting docs. Gemini Live remains disabled by default.
+- **Block 19B target:** Visual polish, accessibility review, demo script polish,
+  and broader product UX cleanup after the deployment path is stable.
 
 ## Sequencing notes
 

@@ -67,7 +67,7 @@ describe("Gemini Live client helpers", () => {
 
     expect(canStartLiveSession(config)).toBe(false)
     expect(getLiveOperationalMessage(config)).toBe(
-      "Live mode is disabled in this deployment configuration."
+      "Gemini Live is disabled in this deployment configuration."
     )
   })
 

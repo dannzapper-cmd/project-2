@@ -29,7 +29,7 @@ Lite, Gemini Live integration disabled by environment until activation, offline
 tuning references, optional Langfuse LLMOps visibility, deploy readiness docs,
 offline eval fixtures, and smoke checks.
 
-## Planned stack (not implemented)
+## Target stack
 
 Target architecture favors API-first, cloud-first delivery: a **Next.js** PWA with **Tailwind** and **shadcn/ui**, a **FastAPI** backend, multimodal models (e.g. **Gemini Flash / Flash-Lite** or equivalent), **RAG** over Open Food Facts or curated data with citations, and observability for evals and production hygiene. Deployment targets include **Vercel** for the frontend and **Modal**, **Render**, **Railway**, **Fly**, or similar for the API. Details, alternatives, and acceptance criteria live in one place.
 
@@ -37,11 +37,11 @@ Target architecture favors API-first, cloud-first delivery: a **Next.js** PWA wi
 
 ## Current status
 
-**Block 18E — Gemini Live full integration, disabled until activation.** The
-current code path supports backend-minted Gemini Live ephemeral tokens and a
-browser Live Voice + Vision panel, but deployment defaults keep it off until the
-owner enables the Render env vars. It adds no auth, new database, WebRTC
-infrastructure, session persistence, or media storage.
+**Block 19A — Production stability and deployment QA.** The current code path
+keeps Gemini Live disabled by default while hardening Vercel Production/Preview
+and Render configuration, CORS, smoke checks, and deployment troubleshooting.
+It adds no new product features, auth, database, WebRTC infrastructure, session
+persistence, or media storage.
 
 ## Documentation
 
@@ -54,6 +54,7 @@ infrastructure, session persistence, or media storage.
 | [docs/cost-privacy-safety.md](./docs/cost-privacy-safety.md) | Cost, privacy, and safety controls |
 | [docs/ai-workflow.md](./docs/ai-workflow.md) | Development workflow across tools |
 | [docs/deploy.md](./docs/deploy.md) | Deploy readiness guide and required env vars |
+| [docs/troubleshooting.md](./docs/troubleshooting.md) | Deployment/API/CORS/Live disabled-state troubleshooting |
 | [docs/smoke-test.md](./docs/smoke-test.md) | Automated and manual post-deploy smoke checks |
 | [docs/llmops.md](./docs/llmops.md) | Optional Langfuse LLMOps setup, privacy guarantees, and verification |
 | [docs/gemini-live.md](./docs/gemini-live.md) | Gemini Live ephemeral-token architecture, activation, and QA |

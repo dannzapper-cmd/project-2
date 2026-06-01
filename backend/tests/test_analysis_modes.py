@@ -7,6 +7,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.schemas import GroundingResult
 from app.services.gemini_analysis import GeminiAnalysisError
 
 
@@ -74,6 +75,46 @@ def test_fallback_disabled_returns_error(monkeypatch):
     )
     assert isinstance(body["latency_ms"], int)
     assert body["request_id"]
+
+
+def test_fallback_enabled_returns_mock_fallback_without_gemini(monkeypatch):
+    async def fail_gemini_analysis(**_kwargs):
+        raise GeminiAnalysisError("TimeoutError")
+
+    class FakeOpenFoodFactsClient:
+        async def ground(self, product):
+            return GroundingResult(
+                grounding_status="no_match",
+                grounding_summary="No reliable OpenFoodFacts match found",
+                match_method="none",
+                source_product_id=None,
+                retrieved_at=None,
+                citations=[],
+                source_trace=["test"],
+                product_enrichment=None,
+            )
+
+    monkeypatch.setenv("SNAPINSIGHT_ANALYSIS_MODE", "gemini")
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    monkeypatch.setenv("SNAPINSIGHT_ALLOW_MOCK_FALLBACK", "true")
+    monkeypatch.setattr(
+        "app.services.analysis_router.analyze_image_with_gemini",
+        fail_gemini_analysis,
+    )
+    monkeypatch.setattr(
+        "app.services.analysis_router.OpenFoodFactsClient",
+        FakeOpenFoodFactsClient,
+    )
+
+    response = post_image(TestClient(app))
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["mode"] == "mock_fallback"
+    assert body["status"] == "completed"
+    assert body["grounding_status"] == "no_match"
+    assert "Gemini unavailable. Showing mock result." in body["warnings"]
+    assert body["privacy"]["image_stored"] is False
 
 
 def test_gemini_analysis_error_stores_safe_details():

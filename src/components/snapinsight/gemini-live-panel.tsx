@@ -9,6 +9,7 @@ import {
   sendGeminiLiveTelemetry,
   type GeminiLiveConfigResponse,
 } from "@/lib/snapinsight-api"
+import { LIVE_CONFIG_UNREACHABLE_MESSAGE } from "@/lib/deployment-errors"
 import {
   buildLiveWebSocketUrl,
   canStartLiveSession,
@@ -39,6 +40,16 @@ function liveStateLabel(state: LiveUiState): string {
   if (state === "connected") return "Live"
   if (state === "error") return "Needs attention"
   return "Ready"
+}
+
+function liveConfigStateLabel(
+  state: LiveUiState,
+  config: GeminiLiveConfigResponse | null
+): string {
+  if (state !== "idle" || !config) return liveStateLabel(state)
+  if (config.status === "disabled") return "Disabled"
+  if (config.status === "not_configured") return "Not configured"
+  return liveStateLabel(state)
 }
 
 function getAudioSampleRate(mimeType: string): number {
@@ -105,7 +116,7 @@ export function GeminiLivePanel({ className }: { className?: string }) {
       setUiState("idle")
     } catch {
       setUiState("error")
-      setErrorMessage("Could not load Live mode configuration.")
+      setErrorMessage(LIVE_CONFIG_UNREACHABLE_MESSAGE)
     }
   }, [])
 
@@ -120,7 +131,7 @@ export function GeminiLivePanel({ className }: { className?: string }) {
       .catch(() => {
         if (!active) return
         setUiState("error")
-        setErrorMessage("Could not load Live mode configuration.")
+        setErrorMessage(LIVE_CONFIG_UNREACHABLE_MESSAGE)
       })
     return () => {
       active = false
@@ -429,7 +440,7 @@ export function GeminiLivePanel({ className }: { className?: string }) {
                 Gemini Live Voice + Vision
               </h3>
               <span className="rounded-full border border-white/10 bg-slate-800/70 px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
-                {liveStateLabel(uiState)}
+                {liveConfigStateLabel(uiState, config)}
               </span>
             </div>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">

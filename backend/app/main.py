@@ -62,6 +62,7 @@ API_VERSION = "v1"
 OVERSIZED_IMAGE_MESSAGE = "Image is too large. Please upload a smaller image."
 DEFAULT_ALLOWED_ORIGINS = [
     "http://localhost:3000",
+    "http://127.0.0.1:3000",
 ]
 logger = logging.getLogger(__name__)
 
@@ -74,9 +75,26 @@ def get_allowed_origins() -> list[str]:
     origins = [
         origin.strip()
         for origin in raw_origins.split(",")
-        if origin.strip()
+        if origin.strip() and origin.strip() != "*"
     ]
     return origins or DEFAULT_ALLOWED_ORIGINS
+
+
+def get_allowed_origin_regex() -> str | None:
+    raw_regex = os.getenv("SNAPINSIGHT_ALLOWED_ORIGIN_REGEX")
+    if raw_regex is None:
+        return None
+    return raw_regex.strip() or None
+
+
+def build_cors_middleware_options() -> dict:
+    return {
+        "allow_origins": get_allowed_origins(),
+        "allow_origin_regex": get_allowed_origin_regex(),
+        "allow_credentials": False,
+        "allow_methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["*"],
+    }
 
 
 def latency_ms(started_at: float) -> int:
@@ -203,10 +221,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=get_allowed_origins(),
-    allow_credentials=False,
-    allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["*"],
+    **build_cors_middleware_options(),
 )
 
 

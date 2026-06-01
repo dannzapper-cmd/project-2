@@ -110,6 +110,13 @@ and key for real analysis, frontend API URL, and backend CORS origins. Minimal
 evals run offline against fixture data and must not call Gemini or
 OpenFoodFacts.
 
+Block 19A hardens the deployed configuration path: Vercel Production and Preview
+builds must set `NEXT_PUBLIC_SNAPINSIGHT_API_URL`, Render CORS must use exact
+production origins plus an optional owner-scoped preview regex, and smoke checks
+must verify `/health`, `/v1/metrics/summary`, `/v1/live/config`, safe disabled
+Gemini Live status, and optional CORS preflight without requiring real Gemini or
+Gemini Live activation.
+
 ## Competitive positioning (informational)
 
 Many apps excel at barcode lookup (e.g. Yuka) or generic visual search (e.g. Google Lens). SnapInsight’s planned differentiation is a **transparent, cited, confidence-aware multimodal companion** for packaged products—camera-first input, grounded retrieval, and explicit uncertainty—not a claim to outperform closed products on every dimension.

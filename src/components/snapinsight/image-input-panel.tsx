@@ -9,6 +9,7 @@ import {
   analyzeImage,
   type AnalysisResponse,
 } from "@/lib/snapinsight-api"
+import { getAnalysisServiceErrorMessage } from "@/lib/deployment-errors"
 import { preprocessImageForUpload } from "@/lib/image-preprocess"
 import { EvidenceGraphPanel } from "@/components/snapinsight/evidence-graph-panel"
 import { MockAnalysisResultCard } from "@/components/snapinsight/mock-analysis-result-card"
@@ -110,18 +111,6 @@ function PreviewAnalysisOverlay({ result }: { result: AnalysisResponse }) {
 
 function isAbortError(err: unknown): boolean {
   return err instanceof Error && err.name === "AbortError"
-}
-
-function getAnalysisErrorMessage(err: unknown): string {
-  if (err instanceof TypeError) {
-    return "Analysis service unavailable. Start the backend or check the API URL."
-  }
-
-  if (err instanceof Error) {
-    return err.message
-  }
-
-  return "Analysis service unavailable. Check the backend and try again."
 }
 
 export function ImageInputPanel({ className }: ImageInputPanelProps) {
@@ -333,7 +322,7 @@ export function ImageInputPanel({ className }: ImageInputPanelProps) {
       if (controller.signal.aborted) {
         return
       }
-      setAnalysisError(getAnalysisErrorMessage(err))
+      setAnalysisError(getAnalysisServiceErrorMessage(err))
     } finally {
       if (abortControllerRef.current === controller) {
         abortControllerRef.current = null
