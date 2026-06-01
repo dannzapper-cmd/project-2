@@ -55,7 +55,7 @@ def _merge_grounding(
 
 
 async def _ground_response(response: AnalyzeImageResponse) -> AnalyzeImageResponse:
-    if response.mode not in {"gemini", "mock"}:
+    if response.mode not in {"gemini", "mock", "mock_fallback"}:
         return response
 
     # Privacy: grounding data is merged in-memory and not persisted beyond this request.
@@ -139,7 +139,7 @@ async def _run_analysis(
 
         if settings.mock_fallback_allowed:
             await metrics.increment("mock_fallbacks")
-            return build_mock_image_analysis_response(
+            response = build_mock_image_analysis_response(
                 request_id=request_id,
                 latency_ms=_latency_ms(started_at),
                 api_version=api_version,
@@ -149,6 +149,7 @@ async def _run_analysis(
                     "No image was stored.",
                 ],
             )
+            return await _ground_response(response)
 
         await metrics.increment("analysis_errors")
         raise AnalysisUnavailableError(

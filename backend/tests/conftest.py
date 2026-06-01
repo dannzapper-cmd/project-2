@@ -20,6 +20,8 @@ def reset_in_memory_state(monkeypatch):
     # Reset them before each test so cache hits and counters never leak
     # between tests.
     monkeypatch.setenv("SNAPINSIGHT_LLMOPS_ENABLED", "false")
+    monkeypatch.delenv("SNAPINSIGHT_ALLOWED_ORIGINS", raising=False)
+    monkeypatch.delenv("SNAPINSIGHT_ALLOWED_ORIGIN_REGEX", raising=False)
     monkeypatch.delenv("LANGFUSE_PUBLIC_KEY", raising=False)
     monkeypatch.delenv("LANGFUSE_SECRET_KEY", raising=False)
     monkeypatch.delenv("LANGFUSE_BASE_URL", raising=False)

@@ -35,12 +35,12 @@ export function getLiveOperationalMessage(
 ): string {
   if (!config) return "Checking Live mode configuration..."
   if (!config.enabled) {
-    return "Live mode is disabled in this deployment configuration."
+    return "Gemini Live is disabled in this deployment configuration."
   }
   if (!config.configured) {
-    return "Live mode is enabled but not configured on the backend."
+    return "Gemini Live is enabled but not configured on the backend."
   }
-  return "Live mode is ready. Media streams directly from this browser to Gemini using a short-lived token."
+  return "Gemini Live is ready. Media streams directly from this browser to Gemini using a short-lived token."
 }
 
 export function buildLiveWebSocketUrl(token: GeminiLiveTokenResponse): string {

@@ -1,7 +1,8 @@
 # SnapInsight deploy readiness
 
-Block 14/15 prepares SnapInsight for live deployment and basic operational
-validation. It is not final QA, final polish, or a production-domain deploy.
+Block 19A hardens the deployed SnapInsight path for Vercel Production, Vercel
+Preview, and Render. Gemini Live remains implemented but disabled by default
+until the deployment owner explicitly activates it.
 
 ## Local development
 
@@ -25,6 +26,11 @@ SNAPINSIGHT_ANALYSIS_MODE=mock uvicorn app.main:app --reload --host 127.0.0.1 --
 Set `NEXT_PUBLIC_SNAPINSIGHT_API_URL=http://127.0.0.1:8000` for local frontend
 API calls.
 
+Default backend CORS allows local frontend origins:
+
+- `http://localhost:3000`
+- `http://127.0.0.1:3000`
+
 ## Backend deploy target
 
 Use a Render/Railway-compatible FastAPI service from the `backend/` directory.
@@ -42,7 +48,8 @@ Required backend environment variables:
 | `GEMINI_API_KEY` | Required when analysis mode is `gemini`; keep server-side only. |
 | `GEMINI_MODEL` | Optional; defaults to `gemini-2.5-flash`. |
 | `SNAPINSIGHT_ALLOW_MOCK_FALLBACK` | Defaults to `false`; only enable for controlled demos. |
-| `SNAPINSIGHT_ALLOWED_ORIGINS` | Comma-separated frontend origins for CORS. |
+| `SNAPINSIGHT_ALLOWED_ORIGINS` | Comma-separated exact frontend origins for CORS. Include the canonical production frontend URL. |
+| `SNAPINSIGHT_ALLOWED_ORIGIN_REGEX` | Optional scoped regex for Vercel Preview origins owned by this project/team. |
 | `SNAPINSIGHT_CACHE_ENABLED` | Defaults to `true`. |
 | `SNAPINSIGHT_CACHE_TTL_SECONDS` | Defaults to `900`. |
 | `SNAPINSIGHT_CACHE_MAX_ENTRIES` | Defaults to `50`. |
@@ -66,12 +73,28 @@ Required backend environment variables:
 | `SNAPINSIGHT_LIVE_SYSTEM_INSTRUCTION` | Optional server-side system instruction locked into ephemeral token constraints. |
 | `PORT` | Usually injected by the backend host. |
 
-CORS behavior: when `SNAPINSIGHT_ALLOWED_ORIGINS` is not set, the backend allows
-only `http://localhost:3000`. It never defaults to `*`. In deployment, set:
+CORS behavior:
+
+- Exact origins from `SNAPINSIGHT_ALLOWED_ORIGINS` remain the primary allowlist.
+- The backend never defaults to `*`, and wildcard `*` is ignored.
+- Vercel Preview deployments produce changing URLs, so use
+  `SNAPINSIGHT_ALLOWED_ORIGIN_REGEX` for a safe owner-scoped preview pattern.
+- Do not use an ownerless wildcard that allows every `vercel.app` deployment.
+
+Production example:
 
 ```bash
 SNAPINSIGHT_ALLOWED_ORIGINS=https://your-frontend.example
 ```
+
+Preview regex example for this project/owner:
+
+```bash
+SNAPINSIGHT_ALLOWED_ORIGIN_REGEX=^https://project-2-[a-z0-9-]+-dannzapper-1603s-projects\.vercel\.app$
+```
+
+Keep the regex in Render env/config, not in source code. If the Vercel team or
+project slug changes, update the regex and redeploy Render.
 
 Do not hardcode production domains in source.
 
@@ -84,7 +107,15 @@ Required frontend environment variable:
 
 | Variable | Notes |
 | --- | --- |
-| `NEXT_PUBLIC_SNAPINSIGHT_API_URL` | HTTPS backend base URL, for example `https://your-api.example`. |
+| `NEXT_PUBLIC_SNAPINSIGHT_API_URL` | HTTPS backend base URL, for example `https://your-api.example`. Set it for Vercel Production, Preview, and Development when those builds should call the deployed backend. |
+
+Do not put `GEMINI_API_KEY`, `LANGFUSE_SECRET_KEY`,
+`SNAPINSIGHT_LIVE_ACCESS_CODE`, Neo4j credentials, private keys, access tokens,
+or other secrets in Vercel `NEXT_PUBLIC_*` variables. Public frontend env values
+are bundled into browser code.
+
+After changing `NEXT_PUBLIC_SNAPINSIGHT_API_URL`, redeploy Vercel. Existing
+Vercel builds do not pick up changed public env vars until rebuilt.
 
 ## Smoke checks after deploy
 
@@ -96,10 +127,43 @@ FRONTEND_URL=https://your-frontend.example \
 python3 scripts/smoke_check.py
 ```
 
-The script checks `/health`, `/v1/metrics/summary`, mock chat only when the
-backend is in mock mode, and compare with synthetic analysis JSON. It skips image
-analysis because deployed analysis can call Gemini and OpenFoodFacts; run that
-manually with the checklist in `docs/smoke-test.md`.
+The script checks:
+
+- frontend URL reachability when `FRONTEND_URL` is set
+- `GET /health`
+- `GET /v1/metrics/summary`
+- `GET /v1/live/config`
+- mock chat only when the backend is in mock mode
+- compare and graph with synthetic analysis JSON
+- optional CORS preflight using `PREVIEW_ORIGIN` or `FRONTEND_URL`
+- safe health/metrics/Live config responses with no secret field names
+
+It skips image analysis because deployed analysis can call Gemini and
+OpenFoodFacts; run that manually with the checklist in `docs/smoke-test.md`.
+
+Render free instances can cold-start. The smoke script retries transient network
+or 5xx failures a few times so a waking backend does not look like a broken app.
+
+To verify a Vercel Preview deployment:
+
+```bash
+BACKEND_BASE_URL=https://your-api.example \
+PREVIEW_ORIGIN=https://your-preview.vercel.app \
+python3 scripts/smoke_check.py
+```
+
+If CORS is configured correctly, the preflight check should report the preview
+origin as allowed.
+
+Manual backend liveness URLs:
+
+- `https://your-api.example/health`
+- `https://your-api.example/v1/metrics/summary`
+- `https://your-api.example/v1/live/config`
+
+After changing `SNAPINSIGHT_ALLOWED_ORIGINS` or
+`SNAPINSIGHT_ALLOWED_ORIGIN_REGEX`, redeploy Render so the middleware receives
+the new settings.
 
 ## Observability notes
 
@@ -119,10 +183,23 @@ manually with the checklist in `docs/smoke-test.md`.
 - Gemini Live status is exposed as safe booleans/model metadata only. Health and
   metrics do not call Google live. See [`gemini-live.md`](./gemini-live.md).
 
+## Demo URL strategy
+
+- Use the stable Vercel Production frontend URL for demos.
+- Treat random Vercel Preview URLs as PR validation targets, not canonical demo
+  links.
+- Use one canonical Render backend URL in `NEXT_PUBLIC_SNAPINSIGHT_API_URL`.
+- Confirm `/health`, `/v1/metrics/summary`, and `/v1/live/config` before a demo.
+- The safe default demo can run in `mock` mode without Gemini quota. Real Gemini
+  demos require `SNAPINSIGHT_ANALYSIS_MODE=gemini` and a server-side
+  `GEMINI_API_KEY`.
+- Gemini Live disabled state is expected until activation and should not block
+  upload/analyze, chat, compare, graph, or Langfuse validation.
+
 ## Gemini Live activation
 
 Gemini Live is disabled by default even though the code path is implemented.
-Activation after Block 20:
+Activation when the owner is ready:
 
 1. Set `SNAPINSIGHT_GEMINI_LIVE_ENABLED=true` in Render.
 2. Ensure `GEMINI_API_KEY` is present in Render.
@@ -145,4 +222,5 @@ for Block 18E.
 - No uploaded images are stored by SnapInsight.
 - Gemini API key is required for real analysis.
 - OpenFoodFacts availability and community data completeness may vary.
-- Final QA, accessibility polish, and production hardening are later work.
+- Visual polish, accessibility review, and larger product UX cleanup are deferred
+  to Block 19B/future work.

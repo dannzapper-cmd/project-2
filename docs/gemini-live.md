@@ -134,7 +134,7 @@ Render free/starter single-instance deployments this is effective. On multi-
 instance deployments, a shared store such as Redis would be needed for global
 limits; that is intentionally out of scope for Block 18E.
 
-## Activation after Block 20
+## Activation when the owner is ready
 
 1. In Render, set `SNAPINSIGHT_GEMINI_LIVE_ENABLED=true`.
 2. Ensure `GEMINI_API_KEY` is set server-side.
@@ -155,8 +155,10 @@ limits; that is intentionally out of scope for Block 18E.
 
 ## Manual QA checklist
 
-- Disabled deployment shows “Live mode is disabled in this deployment
+- Disabled deployment shows “Gemini Live is disabled in this deployment
   configuration.”
+- Config fetch failures show an API URL/CORS/cold-start message and are not
+  labeled as Gemini Live failures.
 - Enabled deployment without `GEMINI_API_KEY` shows not configured and token
   request fails safely.
 - Wrong/missing access code is rejected and not logged.

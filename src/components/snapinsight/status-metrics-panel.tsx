@@ -179,6 +179,16 @@ export function StatusMetricsPanel({
                   }
                 />
                 <Row
+                  label="Mock fallback"
+                  value={
+                    health
+                      ? health.mock_fallback_allowed
+                        ? "allowed"
+                        : "disabled"
+                      : "unknown"
+                  }
+                />
+                <Row
                   label="Gemini Live"
                   value={
                     health

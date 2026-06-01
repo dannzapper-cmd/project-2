@@ -93,6 +93,8 @@ with `llmops_configured=false`.
 - Langfuse Cloud outage or slow network: API responses and Render health checks
   should remain normal because request handlers only enqueue SDK events and never
   flush or validate Langfuse live.
+- See [`troubleshooting.md`](./troubleshooting.md) for deployment/API/CORS
+  issues that can look like product or Gemini failures.
 
 ## Manual verification checklist
 

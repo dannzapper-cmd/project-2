@@ -11,6 +11,7 @@ import argparse
 import json
 import os
 import sys
+import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
@@ -18,7 +19,19 @@ from typing import Any
 
 
 DEFAULT_BACKEND_BASE_URL = "http://127.0.0.1:8000"
-TIMEOUT_SECONDS = 10
+TIMEOUT_SECONDS = 20
+REQUEST_ATTEMPTS = 3
+RETRY_DELAY_SECONDS = 2
+FORBIDDEN_RESPONSE_FRAGMENTS = (
+    "gemini_api_key",
+    "langfuse_secret_key",
+    "snapinsight_live_access_code",
+    "authorization",
+    "api_key",
+    "secret_key",
+    "sk-lf",
+    "aiza",
+)
 
 
 @dataclass
@@ -33,6 +46,25 @@ def _url(base_url: str, path: str) -> str:
     return f"{base_url.rstrip('/')}{path}"
 
 
+def _open_with_retries(request: urllib.request.Request):
+    last_error: Exception | None = None
+    for attempt in range(1, REQUEST_ATTEMPTS + 1):
+        try:
+            return urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS)
+        except urllib.error.HTTPError as exc:
+            if exc.code < 500 or attempt == REQUEST_ATTEMPTS:
+                raise
+            last_error = exc
+        except (TimeoutError, urllib.error.URLError) as exc:
+            if attempt == REQUEST_ATTEMPTS:
+                raise
+            last_error = exc
+        time.sleep(RETRY_DELAY_SECONDS)
+    if last_error:
+        raise last_error
+    raise RuntimeError("request retry loop exited unexpectedly")
+
+
 def _request_json(
     method: str,
     url: str,
@@ -45,7 +77,7 @@ def _request_json(
         body = json.dumps(payload).encode("utf-8")
         headers["Content-Type"] = "application/json"
     request = urllib.request.Request(url, data=body, method=method, headers=headers)
-    with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:
+    with _open_with_retries(request) as response:
         data = response.read()
         if not data:
             return response.status, None
@@ -54,9 +86,19 @@ def _request_json(
 
 def _get_text(url: str) -> int:
     request = urllib.request.Request(url, method="GET")
-    with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:
+    with _open_with_retries(request) as response:
         response.read(512)
         return response.status
+
+
+def _contains_forbidden_fragment(body: dict[str, Any] | None) -> str | None:
+    if body is None:
+        return None
+    serialized = json.dumps(body, sort_keys=True).lower()
+    for fragment in FORBIDDEN_RESPONSE_FRAGMENTS:
+        if fragment in serialized:
+            return fragment
+    return None
 
 
 def _analysis_fixture(request_id: str, name: str, brand: str) -> dict[str, Any]:
@@ -129,28 +171,84 @@ def check_health(backend_url: str) -> tuple[CheckResult, dict[str, Any] | None]:
         status, body = _request_json("GET", _url(backend_url, "/health"))
     except Exception as exc:  # noqa: BLE001
         return CheckResult("health", "FAIL", str(exc), fatal=True), None
+    leaked = _contains_forbidden_fragment(body)
+    if leaked:
+        return CheckResult("health", "FAIL", f"forbidden field/value: {leaked}", fatal=True), body
     if status == 200 and body and body.get("status") == "ok":
+        live_fields = [
+            "gemini_live_enabled",
+            "gemini_live_configured",
+            "gemini_live_provider",
+            "gemini_live_model",
+        ]
+        missing_live_fields = [field for field in live_fields if field not in body]
+        if missing_live_fields:
+            return CheckResult(
+                "health",
+                "FAIL",
+                f"missing Live status fields: {', '.join(missing_live_fields)}",
+                fatal=True,
+            ), body
         mode = body.get("analysis_mode", body.get("mode", "unknown"))
-        return CheckResult("health", "PASS", f"mode={mode}"), body
+        live = "enabled" if body.get("gemini_live_enabled") else "disabled"
+        return CheckResult("health", "PASS", f"mode={mode}, live={live}"), body
     return CheckResult("health", "FAIL", f"HTTP {status}: {body}", fatal=True), body
 
 
-def check_metrics(backend_url: str) -> CheckResult:
+def check_metrics(backend_url: str) -> tuple[CheckResult, dict[str, Any] | None]:
     try:
         status, body = _request_json("GET", _url(backend_url, "/v1/metrics/summary"))
-    except urllib.error.HTTPError as exc:
-        if exc.code == 429:
+    except Exception as exc:  # noqa: BLE001
+        return CheckResult("metrics", "FAIL", str(exc), fatal=True), None
+    leaked = _contains_forbidden_fragment(body)
+    if leaked:
+        return CheckResult("metrics", "FAIL", f"forbidden field/value: {leaked}", fatal=True), body
+    if status == 200 and isinstance(body, dict) and "counters" in body:
+        live_fields = [
+            "gemini_live_enabled",
+            "gemini_live_configured",
+            "gemini_live_provider",
+            "gemini_live_model",
+        ]
+        missing_live_fields = [field for field in live_fields if field not in body]
+        if missing_live_fields:
             return CheckResult(
                 "metrics",
-                "WARN",
-                "rate limited -- endpoint exists but throttled",
-            )
-        return CheckResult("metrics", "FAIL", f"HTTP {exc.code}", fatal=True)
+                "FAIL",
+                f"missing Live status fields: {', '.join(missing_live_fields)}",
+                fatal=True,
+            ), body
+        return CheckResult("metrics", "PASS", "summary counters and Live fields returned"), body
+    return CheckResult("metrics", "FAIL", f"HTTP {status}: {body}", fatal=True), body
+
+
+def check_live_config(backend_url: str) -> tuple[CheckResult, dict[str, Any] | None]:
+    try:
+        status, body = _request_json("GET", _url(backend_url, "/v1/live/config"))
     except Exception as exc:  # noqa: BLE001
-        return CheckResult("metrics", "FAIL", str(exc), fatal=True)
-    if status == 200 and isinstance(body, dict) and "counters" in body:
-        return CheckResult("metrics", "PASS", "summary counters returned")
-    return CheckResult("metrics", "FAIL", f"HTTP {status}: {body}", fatal=True)
+        return CheckResult("live_config", "FAIL", str(exc), fatal=True), None
+    leaked = _contains_forbidden_fragment(body)
+    if leaked:
+        return CheckResult("live_config", "FAIL", f"forbidden field/value: {leaked}", fatal=True), body
+    if status != 200 or not body:
+        return CheckResult("live_config", "FAIL", f"HTTP {status}: {body}", fatal=True), body
+    live_status = body.get("status")
+    if body.get("enabled") is False:
+        if live_status == "disabled" and body.get("configured") is False:
+            return CheckResult(
+                "live_config",
+                "PASS",
+                "disabled-safe config returned",
+            ), body
+        return CheckResult(
+            "live_config",
+            "FAIL",
+            f"disabled config not safe: {body}",
+            fatal=True,
+        ), body
+    if live_status in {"ready", "not_configured"}:
+        return CheckResult("live_config", "PASS", f"status={live_status}"), body
+    return CheckResult("live_config", "FAIL", f"unexpected body: {body}", fatal=True), body
 
 
 def check_analyze() -> CheckResult:
@@ -206,6 +304,60 @@ def check_compare(backend_url: str) -> CheckResult:
     return CheckResult("compare", "FAIL", f"HTTP {status}: {body}", fatal=True)
 
 
+def check_graph(backend_url: str) -> CheckResult:
+    payload = {"analysis": _analysis_fixture("smoke-graph", "Smoke Product", "Demo")}
+    try:
+        status, body = _request_json(
+            "POST", _url(backend_url, "/v1/graph/product"), payload=payload
+        )
+    except Exception as exc:  # noqa: BLE001
+        return CheckResult("graph", "FAIL", str(exc), fatal=True)
+    if (
+        status == 200
+        and body
+        and isinstance(body.get("nodes"), list)
+        and body.get("request_id")
+    ):
+        return CheckResult(
+            "graph",
+            "PASS",
+            f"graph_backend={body.get('graph_backend', 'unknown')}",
+        )
+    return CheckResult("graph", "FAIL", f"HTTP {status}: {body}", fatal=True)
+
+
+def check_cors_preflight(backend_url: str, origin: str | None) -> CheckResult:
+    if not origin:
+        return CheckResult("cors_preflight", "SKIP", "PREVIEW_ORIGIN/FRONTEND_URL not set")
+    request = urllib.request.Request(
+        _url(backend_url, "/v1/analyze/image"),
+        method="OPTIONS",
+        headers={
+            "Origin": origin,
+            "Access-Control-Request-Method": "POST",
+        },
+    )
+    try:
+        with _open_with_retries(request) as response:
+            response.read()
+            status = response.status
+            allowed_origin = response.headers.get("Access-Control-Allow-Origin")
+    except urllib.error.HTTPError as exc:
+        status = exc.code
+        allowed_origin = exc.headers.get("Access-Control-Allow-Origin")
+    except Exception as exc:  # noqa: BLE001
+        return CheckResult("cors_preflight", "FAIL", str(exc), fatal=True)
+
+    if 200 <= status < 400 and allowed_origin == origin:
+        return CheckResult("cors_preflight", "PASS", f"allowed origin {origin}")
+    return CheckResult(
+        "cors_preflight",
+        "FAIL",
+        f"HTTP {status}, Access-Control-Allow-Origin={allowed_origin!r}",
+        fatal=True,
+    )
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run SnapInsight smoke checks.")
     parser.add_argument(
@@ -218,6 +370,11 @@ def parse_args() -> argparse.Namespace:
         default=os.getenv("FRONTEND_URL"),
         help="Optional frontend URL. Defaults to FRONTEND_URL.",
     )
+    parser.add_argument(
+        "--origin",
+        default=os.getenv("PREVIEW_ORIGIN") or os.getenv("FRONTEND_URL"),
+        help="Optional Origin for CORS preflight. Defaults to PREVIEW_ORIGIN or FRONTEND_URL.",
+    )
     return parser.parse_args()
 
 
@@ -229,10 +386,15 @@ def main() -> int:
     health_result, health_body = check_health(args.backend)
     results.append(health_result)
     if not health_result.fatal:
-        results.append(check_metrics(args.backend))
+        metrics_result, _metrics_body = check_metrics(args.backend)
+        live_config_result, _live_config_body = check_live_config(args.backend)
+        results.append(metrics_result)
+        results.append(live_config_result)
         results.append(check_analyze())
         results.append(check_chat(args.backend, health_body))
         results.append(check_compare(args.backend))
+        results.append(check_graph(args.backend))
+        results.append(check_cors_preflight(args.backend, args.origin))
 
     for result in results:
         if result.name == "analyze" and result.detail.startswith("SKIP:"):

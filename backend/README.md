@@ -66,7 +66,14 @@ starting the server:
 export SNAPINSIGHT_ALLOWED_ORIGINS="http://localhost:3000,http://127.0.0.1:3000"
 ```
 
-The backend never defaults CORS to `*`.
+For Vercel Preview deployments, add a scoped owner/project regex:
+
+```bash
+export SNAPINSIGHT_ALLOWED_ORIGIN_REGEX='^https://project-2-[a-z0-9-]+-dannzapper-1603s-projects\.vercel\.app$'
+```
+
+Keep exact production origins in `SNAPINSIGHT_ALLOWED_ORIGINS`. The backend never
+defaults CORS to `*`, and wildcard `*` is ignored.
 
 ## Configuration
 
@@ -74,6 +81,8 @@ The backend never defaults CORS to `*`.
 - `GEMINI_API_KEY`: server-side key required when mode is `gemini`; never expose it as `NEXT_PUBLIC_`.
 - `GEMINI_MODEL`: optional, defaults to `gemini-2.5-flash`.
 - `SNAPINSIGHT_ALLOW_MOCK_FALLBACK`: `false` by default; set `true` only for controlled demo fallback.
+- `SNAPINSIGHT_ALLOWED_ORIGINS`: comma-separated exact frontend origins for CORS.
+- `SNAPINSIGHT_ALLOWED_ORIGIN_REGEX`: optional scoped regex for Vercel Preview origins.
 - `SNAPINSIGHT_LLMOPS_ENABLED`: `false` by default; set `true` to enable optional Langfuse tracing.
 - `LANGFUSE_PUBLIC_KEY`: required when LLMOps tracing is enabled; keep server-side only.
 - `LANGFUSE_SECRET_KEY`: required when LLMOps tracing is enabled; keep server-side only.
@@ -279,9 +288,10 @@ npm run build
 
 The eval script is offline fixture validation only: it does not call Gemini,
 OpenFoodFacts, backend services, or upload/store images. The smoke script checks
-health, metrics, mock chat when the backend is in mock mode, and compare with
-synthetic analysis JSON. Real Gemini image analysis and OpenFoodFacts matching
-remain manual post-deploy checks.
+health, metrics, Live config disabled-safe behavior, mock chat when the backend
+is in mock mode, compare/graph with synthetic analysis JSON, and optional CORS
+preflight. Real Gemini image analysis and OpenFoodFacts matching remain manual
+post-deploy checks.
 
 ## Validation examples
 
