@@ -155,6 +155,14 @@ class MetricsSummaryResponse(BaseModel):
     gemini_live_configured: bool = False
     gemini_live_provider: str = "gemini_live"
     gemini_live_model: str | None = None
+    usage_limits_storage: str | None = None
+    usage_limits_daily_analyses: int | None = None
+    usage_limits_daily_estimated_cost_usd: float | None = None
+    usage_limits_daily_analysis_limit: int | None = None
+    usage_limits_daily_cost_limit_usd: float | None = None
+    usage_limits_max_analyses_per_session: int | None = None
+    usage_limits_max_chat_messages_per_session: int | None = None
+    usage_limits_max_compare_per_session: int | None = None
 
 
 class ChatMessage(BaseModel):

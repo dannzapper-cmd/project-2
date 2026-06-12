@@ -11,6 +11,11 @@ from app.services.gemini_analysis import (
 from app.services.metrics import GROUNDING_COUNTERS, metrics
 from app.services.mock_analysis import build_mock_image_analysis_response
 from app.services.openfoodfacts import OpenFoodFactsClient
+from app.services.usage_limits import (
+    ESTIMATED_GEMINI_ANALYSIS_USD,
+    UsageLimitError,
+    usage_limits,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -103,6 +108,9 @@ async def _run_analysis(
         )
 
     try:
+        await usage_limits.check_gemini_cost_allowed(
+            settings, estimated_usd=ESTIMATED_GEMINI_ANALYSIS_USD
+        )
         response = await analyze_image_with_gemini(
             request_id=request_id,
             image_bytes=image_bytes,
@@ -111,9 +119,18 @@ async def _run_analysis(
             latency_ms=_latency_ms(started_at),
             api_version=api_version,
         )
+        await usage_limits.record_gemini_cost(ESTIMATED_GEMINI_ANALYSIS_USD)
         response.meta.latency_ms = _latency_ms(started_at)
         await metrics.increment("gemini_requests")
         return await _ground_response(response)
+    except UsageLimitError as exc:
+        await metrics.increment("usage_limit_hits")
+        raise AnalysisUnavailableError(
+            error=exc.error,
+            message=exc.message,
+            latency_ms=_latency_ms(started_at),
+            status_code=exc.status_code,
+        )
     except GeminiAnalysisError as exc:
         logger.warning(
             "Gemini analysis failed request_id=%s model=%s error_class=%s "

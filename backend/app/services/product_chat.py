@@ -12,6 +12,11 @@ from app.schemas import (
     ProductChatResponse,
 )
 from app.services.product_graph import graph_context_for_chat
+from app.services.usage_limits import (
+    ESTIMATED_GEMINI_CHAT_USD,
+    UsageLimitError,
+    usage_limits,
+)
 
 
 CHAT_TIMEOUT_SECONDS = 30.0
@@ -312,12 +317,23 @@ async def answer_product_question(
         )
 
     try:
+        await usage_limits.check_gemini_cost_allowed(
+            settings, estimated_usd=ESTIMATED_GEMINI_CHAT_USD
+        )
         answer = await _gemini_chat_answer(
             settings=settings,
             compact_context=compact_context,
             question=safe_question,
         )
+        await usage_limits.record_gemini_cost(ESTIMATED_GEMINI_CHAT_USD)
         mode = "gemini"
+    except UsageLimitError as exc:
+        raise ProductChatError(
+            error=exc.error,
+            message=exc.message,
+            status_code=exc.status_code,
+            latency_ms=_latency_ms(started_at),
+        )
     except GeminiChatError:
         if not settings.mock_fallback_allowed:
             raise ProductChatError(

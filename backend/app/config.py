@@ -19,6 +19,11 @@ DEFAULT_CACHE_ENABLED = True
 DEFAULT_CACHE_TTL_SECONDS = 900
 DEFAULT_CACHE_MAX_ENTRIES = 50
 DEFAULT_MAX_IMAGE_MB = 8
+DEFAULT_MAX_ANALYSES_PER_SESSION = 5
+DEFAULT_MAX_CHAT_MESSAGES_PER_SESSION = 10
+DEFAULT_MAX_COMPARE_PER_SESSION = 3
+DEFAULT_DAILY_ANALYSIS_LIMIT = 100
+DEFAULT_DAILY_COST_LIMIT_USD = 5.0
 DEFAULT_LIVE_MAX_SESSION_SECONDS = 120
 DEFAULT_LIVE_MAX_FRAMES_PER_SECOND = 1
 
@@ -39,6 +44,11 @@ class Settings:
     cache_ttl_seconds: int
     cache_max_entries: int
     max_image_mb: int
+    max_analyses_per_session: int
+    max_chat_messages_per_session: int
+    max_compare_per_session: int
+    daily_analysis_limit: int
+    daily_cost_limit_usd: float
     graph_enabled: bool
     neo4j_uri: str | None
     neo4j_username: str | None
@@ -91,6 +101,21 @@ def _parse_bool_env(name: str, value: str | None, *, default: bool) -> bool:
     return normalized == "true"
 
 
+def _parse_positive_float_env(
+    name: str, value: str | None, *, default: float, minimum: float = 0.0
+) -> float:
+    raw_value = _clean_optional(value)
+    if raw_value is None:
+        return default
+
+    try:
+        parsed = float(raw_value)
+    except ValueError:
+        return default
+
+    return parsed if parsed >= minimum else default
+
+
 def _parse_positive_int_env(
     name: str, value: str | None, *, default: int, minimum: int = 1
 ) -> int:
@@ -140,6 +165,32 @@ def get_settings() -> Settings:
             "SNAPINSIGHT_MAX_IMAGE_MB",
             os.getenv("SNAPINSIGHT_MAX_IMAGE_MB"),
             default=DEFAULT_MAX_IMAGE_MB,
+        ),
+        max_analyses_per_session=_parse_positive_int_env(
+            "SNAPINSIGHT_MAX_ANALYSES_PER_SESSION",
+            os.getenv("SNAPINSIGHT_MAX_ANALYSES_PER_SESSION"),
+            default=DEFAULT_MAX_ANALYSES_PER_SESSION,
+        ),
+        max_chat_messages_per_session=_parse_positive_int_env(
+            "SNAPINSIGHT_MAX_CHAT_MESSAGES_PER_SESSION",
+            os.getenv("SNAPINSIGHT_MAX_CHAT_MESSAGES_PER_SESSION"),
+            default=DEFAULT_MAX_CHAT_MESSAGES_PER_SESSION,
+        ),
+        max_compare_per_session=_parse_positive_int_env(
+            "SNAPINSIGHT_MAX_COMPARE_PER_SESSION",
+            os.getenv("SNAPINSIGHT_MAX_COMPARE_PER_SESSION"),
+            default=DEFAULT_MAX_COMPARE_PER_SESSION,
+        ),
+        daily_analysis_limit=_parse_positive_int_env(
+            "SNAPINSIGHT_DAILY_ANALYSIS_LIMIT",
+            os.getenv("SNAPINSIGHT_DAILY_ANALYSIS_LIMIT"),
+            default=DEFAULT_DAILY_ANALYSIS_LIMIT,
+        ),
+        daily_cost_limit_usd=_parse_positive_float_env(
+            "SNAPINSIGHT_DAILY_COST_LIMIT_USD",
+            os.getenv("SNAPINSIGHT_DAILY_COST_LIMIT_USD"),
+            default=DEFAULT_DAILY_COST_LIMIT_USD,
+            minimum=0.001,
         ),
         graph_enabled=_parse_bool_env(
             "SNAPINSIGHT_GRAPH_ENABLED",

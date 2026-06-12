@@ -21,6 +21,7 @@ COUNTER_NAMES: tuple[str, ...] = (
     "live_token_requests",
     "live_token_errors",
     "live_telemetry_events",
+    "usage_limit_hits",
 )
 
 GROUNDING_COUNTERS: dict[str, str] = {

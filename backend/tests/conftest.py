@@ -34,15 +34,23 @@ def reset_in_memory_state(monkeypatch):
     monkeypatch.delenv("SNAPINSIGHT_LIVE_AUDIO_ENABLED", raising=False)
     monkeypatch.delenv("SNAPINSIGHT_LIVE_VISION_ENABLED", raising=False)
     monkeypatch.delenv("SNAPINSIGHT_LIVE_SYSTEM_INSTRUCTION", raising=False)
+    monkeypatch.delenv("SNAPINSIGHT_MAX_ANALYSES_PER_SESSION", raising=False)
+    monkeypatch.delenv("SNAPINSIGHT_MAX_CHAT_MESSAGES_PER_SESSION", raising=False)
+    monkeypatch.delenv("SNAPINSIGHT_MAX_COMPARE_PER_SESSION", raising=False)
+    monkeypatch.delenv("SNAPINSIGHT_DAILY_ANALYSIS_LIMIT", raising=False)
+    monkeypatch.delenv("SNAPINSIGHT_DAILY_COST_LIMIT_USD", raising=False)
     from app.services.llmops import llmops
     from app.services.gemini_live import live_guardrail
+    from app.services.usage_limits import usage_limits
 
     llmops.refresh_from_env()
     anyio.run(live_guardrail.reset)
+    anyio.run(usage_limits.reset)
     anyio.run(analysis_cache.clear)
     anyio.run(metrics.reset)
     yield
     anyio.run(analysis_cache.clear)
     anyio.run(metrics.reset)
+    anyio.run(usage_limits.reset)
     anyio.run(live_guardrail.reset)
     llmops.refresh_from_env()

@@ -1,4 +1,12 @@
+import { getClientSessionId, CLIENT_SESSION_HEADER } from "@/lib/client-session-id"
+
 const API_BASE = process.env.NEXT_PUBLIC_SNAPINSIGHT_API_URL
+
+function sessionHeaders(): Record<string, string> {
+  return {
+    [CLIENT_SESSION_HEADER]: getClientSessionId(),
+  }
+}
 
 export interface AnalysisConfidence {
   score: number
@@ -121,6 +129,14 @@ export interface MetricsSummaryResponse {
   gemini_live_configured?: boolean
   gemini_live_provider?: "gemini_live"
   gemini_live_model?: string | null
+  usage_limits_storage?: string | null
+  usage_limits_daily_analyses?: number | null
+  usage_limits_daily_estimated_cost_usd?: number | null
+  usage_limits_daily_analysis_limit?: number | null
+  usage_limits_daily_cost_limit_usd?: number | null
+  usage_limits_max_analyses_per_session?: number | null
+  usage_limits_max_chat_messages_per_session?: number | null
+  usage_limits_max_compare_per_session?: number | null
 }
 
 export type GeminiLiveStatus = "disabled" | "not_configured" | "ready"
@@ -331,6 +347,7 @@ export async function analyzeImage(
 
   const response = await fetch(`${getApiBase()}/v1/analyze/image`, {
     method: "POST",
+    headers: sessionHeaders(),
     body: formData,
     signal,
   })
@@ -357,6 +374,7 @@ export async function chatWithProduct(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      ...sessionHeaders(),
     },
     body: JSON.stringify({ analysis, messages, question }),
     signal,
@@ -383,6 +401,7 @@ export async function compareProducts(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      ...sessionHeaders(),
     },
     // Compare sends existing analysis JSON only; no image or audio bytes.
     body: JSON.stringify({

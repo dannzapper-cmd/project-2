@@ -6,7 +6,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from fastapi.testclient import TestClient
 
-from app.config import Settings, is_neo4j_configured
+from app.config import (
+    DEFAULT_DAILY_ANALYSIS_LIMIT,
+    DEFAULT_DAILY_COST_LIMIT_USD,
+    DEFAULT_MAX_ANALYSES_PER_SESSION,
+    DEFAULT_MAX_CHAT_MESSAGES_PER_SESSION,
+    DEFAULT_MAX_COMPARE_PER_SESSION,
+    Settings,
+    is_neo4j_configured,
+)
 from app.main import app
 from app.schemas import (
     AnalyzeImageResponse,
@@ -147,6 +155,11 @@ def test_fallback_mode_returns_non_empty_graph():
         cache_ttl_seconds=900,
         cache_max_entries=50,
         max_image_mb=8,
+        max_analyses_per_session=DEFAULT_MAX_ANALYSES_PER_SESSION,
+        max_chat_messages_per_session=DEFAULT_MAX_CHAT_MESSAGES_PER_SESSION,
+        max_compare_per_session=DEFAULT_MAX_COMPARE_PER_SESSION,
+        daily_analysis_limit=DEFAULT_DAILY_ANALYSIS_LIMIT,
+        daily_cost_limit_usd=DEFAULT_DAILY_COST_LIMIT_USD,
         graph_enabled=True,
         neo4j_uri=None,
         neo4j_username=None,
@@ -220,6 +233,11 @@ def test_neo4j_sync_failure_returns_fallback(monkeypatch):
         cache_ttl_seconds=900,
         cache_max_entries=50,
         max_image_mb=8,
+        max_analyses_per_session=DEFAULT_MAX_ANALYSES_PER_SESSION,
+        max_chat_messages_per_session=DEFAULT_MAX_CHAT_MESSAGES_PER_SESSION,
+        max_compare_per_session=DEFAULT_MAX_COMPARE_PER_SESSION,
+        daily_analysis_limit=DEFAULT_DAILY_ANALYSIS_LIMIT,
+        daily_cost_limit_usd=DEFAULT_DAILY_COST_LIMIT_USD,
         graph_enabled=True,
         neo4j_uri="neo4j+s://example.databases.neo4j.io",
         neo4j_username="neo4j",
@@ -245,6 +263,11 @@ def test_is_neo4j_configured_requires_all_env_vars():
         cache_ttl_seconds=900,
         cache_max_entries=50,
         max_image_mb=8,
+        max_analyses_per_session=DEFAULT_MAX_ANALYSES_PER_SESSION,
+        max_chat_messages_per_session=DEFAULT_MAX_CHAT_MESSAGES_PER_SESSION,
+        max_compare_per_session=DEFAULT_MAX_COMPARE_PER_SESSION,
+        daily_analysis_limit=DEFAULT_DAILY_ANALYSIS_LIMIT,
+        daily_cost_limit_usd=DEFAULT_DAILY_COST_LIMIT_USD,
         graph_enabled=True,
         neo4j_uri="neo4j+s://example.databases.neo4j.io",
         neo4j_username=None,

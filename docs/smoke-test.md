@@ -52,7 +52,8 @@ enabled.
 - [ ] Vercel `NEXT_PUBLIC_SNAPINSIGHT_API_URL` is set for Production and Preview
 - [ ] Backend CORS exact origins allow the production frontend URL
 - [ ] Backend CORS regex allows the scoped Vercel Preview URL pattern
-- [ ] Backend `GEMINI_API_KEY` configured if running real Gemini mode
+- [ ] Backend usage limits configured (`SNAPINSIGHT_MAX_*`, `SNAPINSIGHT_DAILY_*`)
+- [ ] `/v1/metrics/summary` exposes `usage_limits_storage=in_memory` and limit fields
 - [ ] `/health` works on deployed backend
 - [ ] `/v1/metrics/summary` works
 - [ ] `/v1/live/config` returns `enabled=false` and `status=disabled` when Live is off

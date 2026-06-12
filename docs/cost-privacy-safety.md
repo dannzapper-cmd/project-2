@@ -13,8 +13,43 @@
 | `SNAPINSIGHT_ALLOW_MOCK_FALLBACK` | When `true`, failed Gemini can return visible `mock_fallback`; fallback responses are **not cached**. |
 | Gemini Live disabled by default | `SNAPINSIGHT_GEMINI_LIVE_ENABLED=false` blocks token minting until owner activation. |
 | Live session caps | `SNAPINSIGHT_LIVE_MAX_SESSION_SECONDS`, frame rate limits, optional access code. |
+| Session usage caps | `SNAPINSIGHT_MAX_ANALYSES_PER_SESSION`, `SNAPINSIGHT_MAX_CHAT_MESSAGES_PER_SESSION`, `SNAPINSIGHT_MAX_COMPARE_PER_SESSION` via `X-SnapInsight-Session-Id`. |
+| Daily usage caps | `SNAPINSIGHT_DAILY_ANALYSIS_LIMIT` and `SNAPINSIGHT_DAILY_COST_LIMIT_USD` (process-local, UTC day). |
 
 **Demo guidance:** Prefer `mock` for routine low-cost walkthroughs. Use `gemini` only when demonstrating real model behavior with owner approval.
+
+---
+
+## Usage limits (in-memory guardrails)
+
+Session limits are keyed by the browser `X-SnapInsight-Session-Id` header (set automatically by the PWA). Daily limits are global per backend process.
+
+| Variable | Default | Notes |
+|----------|---------|-------|
+| `SNAPINSIGHT_MAX_ANALYSES_PER_SESSION` | `5` | Includes cache hits. |
+| `SNAPINSIGHT_MAX_CHAT_MESSAGES_PER_SESSION` | `10` | Per session. |
+| `SNAPINSIGHT_MAX_COMPARE_PER_SESSION` | `3` | Per session. |
+| `SNAPINSIGHT_DAILY_ANALYSIS_LIMIT` | `100` | Resets at UTC midnight; not shared across instances. |
+| `SNAPINSIGHT_DAILY_COST_LIMIT_USD` | `5` | Conservative **estimated** Gemini spend only (not billing). |
+
+When a limit is reached, the API returns HTTP `429` with a user-facing `message` (no crash). Counters appear in `/v1/metrics/summary` as `usage_limits_*` fields.
+
+### Confirm real Gemini is active
+
+1. `GET /health` → `analysis_mode: "gemini"` and `gemini_configured: true`.
+2. Upload a product image → response `mode: "gemini"` (not `mock` or `mock_fallback`).
+3. `/v1/metrics/summary` → `counters.gemini_requests` increases on non-cached analyses.
+
+### Test limits locally
+
+```bash
+cd backend
+SNAPINSIGHT_ANALYSIS_MODE=mock \
+SNAPINSIGHT_MAX_ANALYSES_PER_SESSION=2 \
+uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+Send three `POST /v1/analyze/image` requests with the same `X-SnapInsight-Session-Id` header; the third should return `429` / `session_analysis_limit`.
 
 ---
 
