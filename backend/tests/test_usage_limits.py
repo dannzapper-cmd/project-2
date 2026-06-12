@@ -34,7 +34,7 @@ def test_session_analysis_limit_returns_429(monkeypatch):
     body = response.json()
     assert body["error"] == "session_analysis_limit"
     assert body["mode"] == "error"
-    assert "session" in body["message"].lower()
+    assert "public demo" in body["message"].lower()
 
 
 def test_daily_analysis_limit_returns_429(monkeypatch):

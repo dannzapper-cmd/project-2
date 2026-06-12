@@ -34,6 +34,19 @@ describe("deployment-aware error messages", () => {
     )
   })
 
+  it("prefixes usage limit backend messages for public demo context", () => {
+    expect(
+      getAnalysisServiceErrorMessage(
+        new Error("You have reached the analysis limit for this session.")
+      )
+    ).toContain("public demo")
+    expect(
+      getAnalysisServiceErrorMessage(
+        new Error("This public demo has reached the analysis limit for this session.")
+      )
+    ).toBe("This public demo has reached the analysis limit for this session.")
+  })
+
   it("distinguishes Live config fetch failure from Gemini Live disabled", () => {
     expect(LIVE_CONFIG_UNREACHABLE_MESSAGE).toContain("backend")
     expect(LIVE_CONFIG_UNREACHABLE_MESSAGE).toContain("API URL")

@@ -11,6 +11,7 @@ import {
   type CompareProductsResponse,
   type CompareStatus,
 } from "@/lib/snapinsight-api"
+import { getSnapInsightApiErrorMessage } from "@/lib/deployment-errors"
 import { cn } from "@/lib/utils"
 
 interface ProductComparePanelProps {
@@ -150,8 +151,7 @@ export function ProductComparePanel({
     } catch (err) {
       setErrorState({
         slotKey,
-        message:
-          err instanceof Error ? err.message : "Compare is unavailable right now.",
+        message: getSnapInsightApiErrorMessage(err),
       })
     } finally {
       setIsComparing(false)

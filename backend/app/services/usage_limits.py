@@ -129,8 +129,9 @@ class UsageLimitService:
                 raise UsageLimitError(
                     error="session_analysis_limit",
                     message=(
-                        "You have reached the analysis limit for this session. "
-                        "Refresh the page to start a new session or try again later."
+                        "This public demo has reached the analysis limit for "
+                        "this session. Refresh the page to start a new session "
+                        "or try again later."
                     ),
                 )
 
@@ -138,8 +139,8 @@ class UsageLimitService:
                 raise UsageLimitError(
                     error="daily_analysis_limit",
                     message=(
-                        "The daily analysis limit has been reached for this "
-                        "deployment. Please try again tomorrow."
+                        "This public demo has reached the daily analysis limit. "
+                        "Please try again tomorrow."
                     ),
                 )
 
@@ -153,8 +154,8 @@ class UsageLimitService:
                 raise UsageLimitError(
                     error="session_chat_limit",
                     message=(
-                        "You have reached the chat message limit for this session. "
-                        "Refresh the page to start a new session."
+                        "This public demo has reached the chat message limit for "
+                        "this session. Refresh the page to start a new session."
                     ),
                 )
             bucket["chats"] += 1
@@ -166,8 +167,8 @@ class UsageLimitService:
                 raise UsageLimitError(
                     error="session_compare_limit",
                     message=(
-                        "You have reached the compare limit for this session. "
-                        "Refresh the page to start a new session."
+                        "This public demo has reached the compare limit for this "
+                        "session. Refresh the page to start a new session."
                     ),
                 )
             bucket["compares"] += 1
@@ -182,8 +183,8 @@ class UsageLimitService:
                 raise UsageLimitError(
                     error="daily_cost_limit",
                     message=(
-                        "The daily estimated Gemini cost limit has been reached "
-                        "for this deployment. Please try again tomorrow."
+                        "This public demo has reached the daily estimated AI cost "
+                        "limit. Please try again tomorrow."
                     ),
                 )
 

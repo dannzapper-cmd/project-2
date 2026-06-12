@@ -1,25 +1,22 @@
 # SnapInsight
 
-**AI Visual Companion for Products** — deployed mobile-first PWA + FastAPI backend for cited, multimodal product intelligence (food & CPG).
+**AI Visual Companion for Products** — mobile-first PWA + FastAPI backend for cited, multimodal product intelligence (food & CPG).
 
 **Live demo:** Set your Vercel Production URL (e.g. `https://YOUR_FRONTEND.vercel.app`) — see [docs/demo-guide.md](./docs/demo-guide.md).
-**Stack:** Next.js PWA (Vercel) · FastAPI (Render) · Open Food Facts · optional Neo4j GraphRAG Lite · Gemini (feature-flagged) · optional Langfuse.
+
+**Stack:** Next.js PWA (Vercel) · FastAPI (Render) · Gemini 2.5 Flash · Open Food Facts · optional Neo4j GraphRAG Lite · optional Langfuse.
 
 ---
 
-SnapInsight lets users photograph or upload packaged products and receive structured analysis with **Open Food Facts citations** when matched, plus contextual chat, side-by-side compare, and a lightweight product graph. It is production-deployed with smoke-tested health/metrics/Live-disabled paths, intentional cost-safe analysis modes, and aggregate-only observability—built as a real product workflow, not a one-shot vision API demo.
+SnapInsight is a **cost-controlled, production-like deployed demo**: users photograph or upload packaged products and receive structured analysis with **Open Food Facts citations** when matched, plus contextual chat, compare, and a lightweight product graph. Built as a real product workflow—not a one-shot vision API demo.
 
 ## What it does
 
 1. **Capture** — camera or upload on a mobile-first PWA
-2. **Analyze** — multimodal structured insights (`mock`, `gemini`, or visible `mock_fallback`)
+2. **Analyze** — real Gemini multimodal analysis when configured (`gemini` mode)
 3. **Ground** — conservative Open Food Facts matching with citations
 4. **Interact** — product-scoped chat, compare, GraphRAG Lite
 5. **Observe** — in-app metrics + optional Langfuse traces (safe metadata only)
-
-## Why it matters
-
-Shoppers and product teams lose time to **unclear labels** and **uncited AI answers**. SnapInsight focuses on **traceable product intelligence**: sources on the card, explicit uncertainty, compare for decisions, and operational visibility—without medical claims or counterfeit assertions. It can support faster understanding in categories where open data coverage is strong ([business case](./docs/business-case.md)).
 
 ## Core features
 
@@ -31,10 +28,10 @@ Shoppers and product teams lose time to **unclear labels** and **uncited AI answ
 | Compare Mode Lite | Side-by-side product diff |
 | GraphRAG Lite | Neo4j Aura + in-memory fallback |
 | Voice Lite | Browser speech (no server audio) |
+| Cost controls | Session + daily limits, cache, estimated spend cap |
 | Status & metrics | `/v1/metrics/summary` + in-app panel |
-| LLMOps (optional) | Langfuse aggregate traces |
 
-## Architecture overview
+## Architecture
 
 ```mermaid
 flowchart LR
@@ -53,85 +50,81 @@ flowchart LR
 
 Details: [docs/architecture.md](./docs/architecture.md) · [docs/case-study.md](./docs/case-study.md)
 
-## Production readiness
+## Run locally
 
-- Deployed pattern: **Vercel** (frontend) + **Render** (backend)
-- Smoke checks: health, metrics, Live config, compare/graph synthetics, CORS ([docs/smoke-test.md](./docs/smoke-test.md))
-- Block 19A: Preview CORS regex, cold-start retries, troubleshooting ([docs/deploy.md](./docs/deploy.md))
-- **Gemini Live:** implemented, **disabled by default** (`GET /v1/live/config` → `enabled: false`)
+**Frontend:**
 
-## Observability
+```bash
+npm install
+cp .env.example .env.local   # set NEXT_PUBLIC_SNAPINSIGHT_API_URL
+npm run dev
+```
 
-When Langfuse is enabled, each analysis request can produce a trace with: `analysis_mode`, `cache_hit`, `grounding_status`, `citations_count`, `warnings_count`, `graph_backend`, `fallback_used`, `latency_ms`, and `error_type` if applicable. **No** image bytes, base64, raw prompts, transcripts, API keys, or PII. Tracing is optional and non-blocking. See [docs/llmops.md](./docs/llmops.md).
+**Backend:**
 
-## Analysis modes (`mock` / `gemini` / `mock_fallback`)
+```bash
+cd backend
+pip install -r requirements.txt
+cp .env.example .env         # SNAPINSIGHT_ANALYSIS_MODE=mock for zero-cost dev
+SNAPINSIGHT_ANALYSIS_MODE=mock uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+Open `http://localhost:3000` with backend at `http://127.0.0.1:8000`.
+
+## Deploy
+
+| Target | Guide |
+|--------|-------|
+| Render (backend) | [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) |
+| Vercel (frontend) | [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) |
+| Env vars | [docs/ENV_VARS.md](./docs/ENV_VARS.md) |
+| Smoke test | [docs/smoke-test.md](./docs/smoke-test.md) · `scripts/smoke_check.py` |
+
+**Production demo:** `SNAPINSIGHT_ANALYSIS_MODE=gemini` + server-side `GEMINI_API_KEY` on Render only.
+
+## Cost & privacy
+
+- Session and daily usage limits for the public demo
+- In-memory cache (responses only, not images)
+- No persistent user accounts or image storage
+- EXIF strip in browser where supported
+- API keys backend-only
+
+[docs/PRIVACY_AND_COST_CONTROLS.md](./docs/PRIVACY_AND_COST_CONTROLS.md) · [docs/cost-privacy-safety.md](./docs/cost-privacy-safety.md)
+
+## Analysis modes
 
 | Mode | Purpose |
 |------|---------|
-| **`mock`** | Deterministic zero-cost demos, CI, local dev |
-| **`gemini`** | Real multimodal analysis (server-side API key) |
-| **`mock_fallback`** | Opt-in labeled fallback when Gemini fails; **not cached** |
+| `mock` | Zero-cost local dev / CI |
+| `gemini` | Real multimodal analysis (production) |
+| `mock_fallback` | Opt-in labeled fallback when Gemini fails |
 
-This three-mode design keeps demos honest and production degradations visible. Activation: [docs/demo-guide.md](./docs/demo-guide.md).
+## Limitations (honest)
 
-## Demo flow
+Not medical advice. No guaranteed identification. Open Food Facts coverage varies. **Not published on Play Store or App Store.** No accounts/payments. Gemini Live **not activated** in this close-out. See [docs/limitations.md](./docs/limitations.md).
 
-1. Open Production PWA → Scan → upload a packaged product image
-2. Review insight card (mode, confidence, citations)
-3. Chat → Compare → Graph
-4. Optional: Langfuse trace + metrics panel
+## Next steps
 
-Full script: [docs/demo-guide.md](./docs/demo-guide.md)
-
-## Tech stack
-
-| Layer | Technology |
-|-------|------------|
-| Frontend | Next.js, Tailwind, shadcn/ui, PWA |
-| Backend | FastAPI (Python 3.11+) |
-| AI | Gemini (feature-flagged); mock paths |
-| Data | Open Food Facts; optional Neo4j Aura |
-| Observability | Langfuse (optional); in-memory metrics |
-| Hosting | Vercel + Render |
-
-Full spec: [SPEC.md](./SPEC.md)
-
-## Cost & privacy controls
-
-- Mock default for low-cost demos; cache stores **responses only** (hashed keys, not images)
-- No persistent user accounts or uploaded image storage
-- Gemini Live off by default; ephemeral tokens when enabled
-- [docs/cost-privacy-safety.md](./docs/cost-privacy-safety.md)
-
-## Limitations
-
-Not medical advice. No guaranteed identification. Open Food Facts coverage varies. No app store listing yet. No accounts/payments. See [docs/limitations.md](./docs/limitations.md).
-
-## Roadmap
-
-Phased scaling (controlled Gemini → data coverage → history → mobile packaging → B2B API): [docs/scaling-roadmap.md](./docs/scaling-roadmap.md) · delivery blocks: [docs/roadmap.md](./docs/roadmap.md)
+- Gemini Live — experimental optional wow feature ([docs/ROADMAP_NEXT_STEPS.md](./docs/ROADMAP_NEXT_STEPS.md))
+- Store readiness documented, not executed ([docs/MOBILE_STORE_READINESS.md](./docs/MOBILE_STORE_READINESS.md))
 
 ## Documentation
 
 | Document | Description |
 |----------|-------------|
-| [docs/case-study.md](./docs/case-study.md) | Problem, architecture, decisions, lessons |
-| [docs/business-case.md](./docs/business-case.md) | Market, personas, monetization (conservative) |
-| [docs/business-metrics.md](./docs/business-metrics.md) | Metric definitions (not fake results) |
-| [docs/portfolio-pitch.md](./docs/portfolio-pitch.md) | Hiring / interview pitch |
-| [docs/product-positioning.md](./docs/product-positioning.md) | Positioning guardrails |
-| [docs/demo-guide.md](./docs/demo-guide.md) | Deployed demo runbook |
-| [docs/product/snapinsight-business-product-brief.md](./docs/product/snapinsight-business-product-brief.md) | Research brief source of truth |
-| [docs/mobile-packaging.md](./docs/mobile-packaging.md) | PWA → TWA → Capacitor path |
-| [docs/screenshots-and-video-checklist.md](./docs/screenshots-and-video-checklist.md) | Media capture placeholders |
-| [docs/deploy.md](./docs/deploy.md) | Environment variables & deploy |
-| [docs/troubleshooting.md](./docs/troubleshooting.md) | CORS, cold start, modes |
-| [docs/llmops.md](./docs/llmops.md) | Langfuse setup |
-| [docs/gemini-live.md](./docs/gemini-live.md) | Live activation (off by default) |
+| [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) | Render + Vercel deploy |
+| [docs/ENV_VARS.md](./docs/ENV_VARS.md) | Environment reference |
+| [docs/QA_FINAL.md](./docs/QA_FINAL.md) | Final audit checklist & results |
+| [docs/PRIVACY_AND_COST_CONTROLS.md](./docs/PRIVACY_AND_COST_CONTROLS.md) | Limits, cache, privacy |
+| [docs/ROADMAP_NEXT_STEPS.md](./docs/ROADMAP_NEXT_STEPS.md) | Post-close-out roadmap |
+| [docs/MOBILE_STORE_READINESS.md](./docs/MOBILE_STORE_READINESS.md) | Play/App path (not published) |
+| [docs/demo-guide.md](./docs/demo-guide.md) | Demo runbook |
+| [docs/portfolio-pitch.md](./docs/portfolio-pitch.md) | Interview pitch |
 
 ## Current status
 
-**Block 20A — Final product package documentation.** Premium README and business/product docs; no runtime feature changes. Gemini and Gemini Live remain disabled unless the deployment owner activates them.
+**Proyecto 2 close-out — QA final.** Gemini real mode + usage/cost guardrails verified. Gemini Live disabled. Store packaging documented only. See [docs/QA_FINAL.md](./docs/QA_FINAL.md).
 
 ---
 

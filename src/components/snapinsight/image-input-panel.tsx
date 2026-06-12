@@ -46,7 +46,7 @@ const ANALYSIS_PRIVACY_COPY =
   "Images are processed for analysis and are not stored by SnapInsight. EXIF metadata is stripped in your browser where supported; compare uses analysis results only."
 
 const ANALYSIS_COST_COPY =
-  "Caching helps reduce repeated analysis cost and latency. Repeated identical images may return faster. No paid service beyond the configured AI model is added."
+  "This public demo has per-session and daily usage limits to control AI costs. Caching helps reduce repeated analysis cost and latency."
 
 function getAnalysisModeLabel(mode: AnalysisResponse["mode"]): string {
   if (mode === "gemini") return "AI Analysis"
