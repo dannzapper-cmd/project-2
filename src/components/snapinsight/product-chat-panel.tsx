@@ -9,6 +9,7 @@ import {
   type AnalysisResponse,
   type ChatMessage,
 } from "@/lib/snapinsight-api"
+import { getSnapInsightApiErrorMessage } from "@/lib/deployment-errors"
 import { cn } from "@/lib/utils"
 
 interface ProductChatPanelProps {
@@ -114,9 +115,7 @@ export function ProductChatPanel({ analysis }: ProductChatPanelProps) {
           },
         ])
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Chat is unavailable right now."
-        )
+        setError(getSnapInsightApiErrorMessage(err))
       } finally {
         setIsLoading(false)
       }
