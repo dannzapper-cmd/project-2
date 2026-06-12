@@ -54,6 +54,11 @@ Required backend environment variables:
 | `SNAPINSIGHT_CACHE_TTL_SECONDS` | Defaults to `900`. |
 | `SNAPINSIGHT_CACHE_MAX_ENTRIES` | Defaults to `50`. |
 | `SNAPINSIGHT_MAX_IMAGE_MB` | Defaults to `8`. |
+| `SNAPINSIGHT_MAX_ANALYSES_PER_SESSION` | Defaults to `5`; per-client session via `X-SnapInsight-Session-Id`. |
+| `SNAPINSIGHT_MAX_CHAT_MESSAGES_PER_SESSION` | Defaults to `10`. |
+| `SNAPINSIGHT_MAX_COMPARE_PER_SESSION` | Defaults to `3`. |
+| `SNAPINSIGHT_DAILY_ANALYSIS_LIMIT` | Defaults to `100`; process-local UTC day counter. |
+| `SNAPINSIGHT_DAILY_COST_LIMIT_USD` | Defaults to `5`; conservative estimated Gemini spend guardrail. |
 | `SNAPINSIGHT_GRAPH_ENABLED` | Defaults to `true`; set `false` to skip Neo4j sync attempts. |
 | `NEO4J_URI` | Optional Neo4j Aura URI for graph persistence of public product metadata. |
 | `NEO4J_USERNAME` | Required with `NEO4J_URI` for Neo4j sync. |
@@ -84,6 +89,19 @@ CORS behavior:
 Production example:
 
 ```bash
+SNAPINSIGHT_ANALYSIS_MODE=gemini
+GEMINI_API_KEY=<server-side-only>
+GEMINI_MODEL=gemini-2.5-flash
+SNAPINSIGHT_ALLOW_MOCK_FALLBACK=false
+SNAPINSIGHT_CACHE_ENABLED=true
+SNAPINSIGHT_CACHE_TTL_SECONDS=900
+SNAPINSIGHT_CACHE_MAX_ENTRIES=50
+SNAPINSIGHT_MAX_IMAGE_MB=8
+SNAPINSIGHT_MAX_ANALYSES_PER_SESSION=5
+SNAPINSIGHT_MAX_CHAT_MESSAGES_PER_SESSION=10
+SNAPINSIGHT_MAX_COMPARE_PER_SESSION=3
+SNAPINSIGHT_DAILY_ANALYSIS_LIMIT=100
+SNAPINSIGHT_DAILY_COST_LIMIT_USD=5
 SNAPINSIGHT_ALLOWED_ORIGINS=https://your-frontend.example
 ```
 
@@ -216,8 +234,8 @@ for Block 18E.
 
 ## Known limitations
 
-- In-memory cache and metrics reset on backend restart.
-- Cache and metrics are not shared across workers or instances.
+- In-memory cache, metrics, and usage limits reset on backend restart.
+- Cache, metrics, and usage limits are not shared across workers or instances.
 - No auth, database, Redis, or persistent storage.
 - No uploaded images are stored by SnapInsight.
 - Gemini API key is required for real analysis.

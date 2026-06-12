@@ -53,6 +53,7 @@ from app.services.metrics import metrics
 from app.services.product_chat import ProductChatError, answer_product_question
 from app.services.product_compare import ProductCompareError, compare_products
 from app.services.product_graph import build_product_graph_response
+from app.services.usage_limits import UsageLimitError, normalize_session_id, usage_limits
 
 
 SERVICE_NAME = "snapinsight-backend"
@@ -371,6 +372,9 @@ async def metrics_summary() -> MetricsSummaryResponse:
     try:
         settings = get_settings()
         snapshot.update(live_status_fields_from_settings(settings))
+        snapshot.update(
+            (await usage_limits.global_snapshot(settings)).metrics_api_fields()
+        )
     except ConfigurationError:
         snapshot.update(live_status_fields_from_env())
     return MetricsSummaryResponse(**snapshot)
@@ -546,6 +550,7 @@ async def live_telemetry(
 @app.post("/v1/analyze/image", response_model=AnalyzeImageResponse)
 async def analyze_image(
     file: UploadFile = File(...),
+    x_snapinsight_session_id: str | None = Header(default=None),
 ) -> AnalyzeImageResponse | JSONResponse:
     start_time = time.monotonic()
     request_id = str(uuid.uuid4())
@@ -633,6 +638,32 @@ async def analyze_image(
         },
     )
 
+    session_id = normalize_session_id(x_snapinsight_session_id)
+    try:
+        await usage_limits.reserve_analysis(session_id, settings)
+    except UsageLimitError as exc:
+        elapsed_ms = latency_ms(start_time)
+        await metrics.increment("usage_limit_hits")
+        trace_backend_event(
+            "snapinsight.analyze",
+            {
+                "route": "/v1/analyze/image",
+                "operation": "analyze_image",
+                "analysis_mode": settings.analysis_mode,
+                "status": "error",
+                "status_code": exc.status_code,
+                "error_type": exc.error,
+                "latency_ms": elapsed_ms,
+            },
+        )
+        return build_error_response(
+            status_code=exc.status_code,
+            error=exc.error,
+            message=exc.message,
+            request_id=request_id,
+            latency_ms=elapsed_ms,
+        )
+
     try:
         response = await analyze_product_image(
             request_id=request_id,
@@ -686,6 +717,7 @@ async def analyze_image(
 @app.post("/v1/chat/product", response_model=ProductChatResponse)
 async def chat_product(
     request: ProductChatRequest,
+    x_snapinsight_session_id: str | None = Header(default=None),
 ) -> ProductChatResponse | JSONResponse:
     start_time = time.monotonic()
     request_id = str(uuid.uuid4())
@@ -715,6 +747,36 @@ async def chat_product(
         return build_chat_error_response(
             status_code=500,
             error="invalid_analysis_mode",
+            message=exc.message,
+            request_id=request_id,
+            latency_ms=elapsed_ms,
+        )
+
+    session_id = normalize_session_id(x_snapinsight_session_id)
+    try:
+        await usage_limits.reserve_chat(session_id, settings)
+    except UsageLimitError as exc:
+        elapsed_ms = latency_ms(start_time)
+        await metrics.increment("usage_limit_hits")
+        trace_backend_event(
+            "snapinsight.chat",
+            {
+                "route": "/v1/chat/product",
+                "operation": "chat_product",
+                "analysis_mode": settings.analysis_mode,
+                "chat_used": True,
+                "status": "error",
+                "status_code": exc.status_code,
+                "error_type": exc.error,
+                "message_count": len(request.messages),
+                "question_length": len(request.question),
+                "has_product_context": request.analysis is not None,
+                "latency_ms": elapsed_ms,
+            },
+        )
+        return build_chat_error_response(
+            status_code=exc.status_code,
+            error=exc.error,
             message=exc.message,
             request_id=request_id,
             latency_ms=elapsed_ms,
@@ -778,6 +840,7 @@ async def chat_product(
 @app.post("/v1/compare/products", response_model=CompareProductsResponse)
 async def compare_product_results(
     payload: dict | None = Body(default=None),
+    x_snapinsight_session_id: str | None = Header(default=None),
 ) -> CompareProductsResponse | JSONResponse:
     start_time = time.monotonic()
     request_id = str(uuid.uuid4())
@@ -826,6 +889,58 @@ async def compare_product_results(
             status_code=400,
             error="compare_media_not_allowed",
             message="Compare accepts analysis results only, not image or audio bytes.",
+            request_id=request_id,
+            latency_ms=elapsed_ms,
+        )
+
+    try:
+        settings = get_settings()
+    except ConfigurationError as exc:
+        elapsed_ms = latency_ms(start_time)
+        trace_backend_event(
+            "snapinsight.compare",
+            {
+                "route": "/v1/compare/products",
+                "operation": "compare_products",
+                "compare_used": True,
+                "status": "error",
+                "status_code": 500,
+                "error_type": "invalid_configuration",
+                "fields_count": len(payload or {}),
+                "latency_ms": elapsed_ms,
+            },
+        )
+        return build_compare_error_response(
+            status_code=500,
+            error="invalid_configuration",
+            message=exc.message,
+            request_id=request_id,
+            latency_ms=elapsed_ms,
+        )
+
+    session_id = normalize_session_id(x_snapinsight_session_id)
+    try:
+        await usage_limits.reserve_compare(session_id, settings)
+    except UsageLimitError as exc:
+        elapsed_ms = latency_ms(start_time)
+        await metrics.increment("usage_limit_hits")
+        trace_backend_event(
+            "snapinsight.compare",
+            {
+                "route": "/v1/compare/products",
+                "operation": "compare_products",
+                "compare_used": True,
+                "status": "error",
+                "status_code": exc.status_code,
+                "error_type": exc.error,
+                "fields_count": len(payload or {}),
+                "latency_ms": elapsed_ms,
+            },
+        )
+        return build_compare_error_response(
+            status_code=exc.status_code,
+            error=exc.error,
+            message=exc.message,
             request_id=request_id,
             latency_ms=elapsed_ms,
         )

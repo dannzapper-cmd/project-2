@@ -81,6 +81,11 @@ defaults CORS to `*`, and wildcard `*` is ignored.
 - `GEMINI_API_KEY`: server-side key required when mode is `gemini`; never expose it as `NEXT_PUBLIC_`.
 - `GEMINI_MODEL`: optional, defaults to `gemini-2.5-flash`.
 - `SNAPINSIGHT_ALLOW_MOCK_FALLBACK`: `false` by default; set `true` only for controlled demo fallback.
+- `SNAPINSIGHT_MAX_ANALYSES_PER_SESSION`: optional, defaults to `5`.
+- `SNAPINSIGHT_MAX_CHAT_MESSAGES_PER_SESSION`: optional, defaults to `10`.
+- `SNAPINSIGHT_MAX_COMPARE_PER_SESSION`: optional, defaults to `3`.
+- `SNAPINSIGHT_DAILY_ANALYSIS_LIMIT`: optional, defaults to `100` (process-local UTC day).
+- `SNAPINSIGHT_DAILY_COST_LIMIT_USD`: optional, defaults to `5` (estimated Gemini guardrail).
 - `SNAPINSIGHT_ALLOWED_ORIGINS`: comma-separated exact frontend origins for CORS.
 - `SNAPINSIGHT_ALLOWED_ORIGIN_REGEX`: optional scoped regex for Vercel Preview origins.
 - `SNAPINSIGHT_LLMOPS_ENABLED`: `false` by default; set `true` to enable optional Langfuse tracing.

@@ -218,7 +218,28 @@ def check_metrics(backend_url: str) -> tuple[CheckResult, dict[str, Any] | None]
                 f"missing Live status fields: {', '.join(missing_live_fields)}",
                 fatal=True,
             ), body
-        return CheckResult("metrics", "PASS", "summary counters and Live fields returned"), body
+        usage_fields = [
+            "usage_limits_storage",
+            "usage_limits_daily_analysis_limit",
+            "usage_limits_daily_cost_limit_usd",
+            "usage_limits_max_analyses_per_session",
+        ]
+        missing_usage_fields = [field for field in usage_fields if field not in body]
+        if missing_usage_fields:
+            return CheckResult(
+                "metrics",
+                "FAIL",
+                f"missing usage limit fields: {', '.join(missing_usage_fields)}",
+                fatal=True,
+            ), body
+        if body.get("usage_limits_storage") != "in_memory":
+            return CheckResult(
+                "metrics",
+                "FAIL",
+                f"unexpected usage_limits_storage: {body.get('usage_limits_storage')}",
+                fatal=True,
+            ), body
+        return CheckResult("metrics", "PASS", "summary counters, Live, and usage limits returned"), body
     return CheckResult("metrics", "FAIL", f"HTTP {status}: {body}", fatal=True), body
 
 
