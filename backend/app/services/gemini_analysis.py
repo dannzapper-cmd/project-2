@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import re
 from typing import Literal
 
@@ -18,10 +19,18 @@ from app.schemas import (
 
 
 GEMINI_TIMEOUT_SECONDS = 30.0
+GEMINI_MAX_OUTPUT_TOKENS = 4096
+GEMINI_MAX_PARSE_ATTEMPTS = 3
 SAFE_MESSAGE_MAX_CHARS = 300
+INVALID_STRUCTURED_JSON_SAFE_MESSAGE = (
+    "Gemini returned invalid structured JSON after retries."
+)
 
 _API_KEY_PATTERN = re.compile(
     r"(?i)\b(api[_-]?key|x-goog-api-key)\b\s*[:=]\s*([^\s,;]+)"
+)
+_FENCED_JSON_PATTERN = re.compile(
+    r"^\s*```(?:json)?\s*(.*?)\s*```\s*$", re.IGNORECASE | re.DOTALL
 )
 _DATA_IMAGE_PATTERN = re.compile(
     r"(?i)data:image/[a-z0-9.+-]+;base64,[a-z0-9+/=\s]+"
@@ -31,6 +40,7 @@ _BYTES_LITERAL_PATTERN = re.compile(r"b(['\"]).*?\1", re.DOTALL)
 _SENSITIVE_FIELD_PATTERN = re.compile(
     r"(?i)\b(prompt|payload|request_payload|contents|response_body|image_bytes)\b\s*[:=]\s*([^;,\n]+)"
 )
+logger = logging.getLogger(__name__)
 
 
 class GeminiAnalysisError(Exception):
@@ -138,9 +148,9 @@ class GeminiProduct(BaseModel):
 
 class GeminiProductResponse(BaseModel):
     product: GeminiProduct
-    insights: list[GeminiInsight] = Field(default_factory=list)
-    warnings: list[str] = Field(default_factory=list)
-    next_questions: list[str] = Field(default_factory=list)
+    insights: list[GeminiInsight] = Field(default_factory=list, max_length=3)
+    warnings: list[str] = Field(default_factory=list, max_length=3)
+    next_questions: list[str] = Field(default_factory=list, max_length=3)
 
 
 GEMINI_IMAGE_ANALYSIS_INSTRUCTION = """
@@ -152,8 +162,11 @@ Rules:
 - Extract visible attributes from the package or label only when reasonably supported.
 - Extract barcode only when an EAN-13, UPC-A, or similar code is clearly visible.
 - Provide concise, actionable insights.
-- Provide warnings or limitations when uncertain.
+- Keep insights concise; return at most 3 insights, each no more than one short sentence.
+- Provide at most 3 warnings or limitations when uncertain.
+- Provide at most 3 next_questions.
 - Provide confidence score from 0.0 to 1.0 and label low, medium, or high.
+- Return JSON only. Do not include markdown, comments, prose, or code fences.
 - Never claim authenticity or fake-product detection.
 - Never scrape, estimate, or claim live prices.
 - Never make medical diagnoses.
@@ -165,6 +178,14 @@ Rules:
 """
 
 
+def _normalize_response_text(text: str) -> str:
+    stripped = text.strip()
+    fenced_match = _FENCED_JSON_PATTERN.match(stripped)
+    if fenced_match:
+        return fenced_match.group(1).strip()
+    return stripped
+
+
 def _parse_gemini_response(response: object) -> GeminiProductResponse:
     parsed = getattr(response, "parsed", None)
     if isinstance(parsed, GeminiProductResponse):
@@ -174,9 +195,97 @@ def _parse_gemini_response(response: object) -> GeminiProductResponse:
 
     text = getattr(response, "text", None)
     if not text:
-        raise GeminiAnalysisError("EmptyGeminiResponse")
+        raise GeminiAnalysisError(
+            "EmptyGeminiResponse",
+            safe_message="Gemini returned an empty response.",
+        )
 
-    return GeminiProductResponse.model_validate_json(text)
+    normalized_text = _normalize_response_text(text)
+    if not normalized_text:
+        raise GeminiAnalysisError(
+            "EmptyGeminiResponse",
+            safe_message="Gemini returned an empty response.",
+        )
+
+    return GeminiProductResponse.model_validate_json(normalized_text)
+
+
+def _is_retriable_parse_failure(exc: Exception) -> bool:
+    status_code, code = _extract_provider_details(exc)
+    return status_code is None and code is None
+
+
+def _log_parse_retry(
+    *,
+    request_id: str,
+    model: str,
+    attempt: int,
+    exc: Exception,
+) -> None:
+    error_class = (
+        exc.error_class
+        if isinstance(exc, GeminiAnalysisError)
+        else exc.__class__.__name__
+    )
+    logger.warning(
+        "Gemini structured JSON parse failed; retrying "
+        "request_id=%s model=%s attempt=%s error_class=%s",
+        request_id,
+        model,
+        attempt,
+        error_class,
+        extra={
+            "request_id": request_id,
+            "model": model,
+            "attempt": attempt,
+            "error_class": error_class,
+        },
+    )
+
+
+async def _generate_and_parse_with_retries(
+    *,
+    client: genai.Client,
+    request_id: str,
+    model: str,
+    contents: list[types.Part],
+    config: types.GenerateContentConfig,
+) -> GeminiProductResponse:
+    last_parse_exc: Exception | None = None
+    parse_error_types = (ValidationError, ValueError, TypeError, GeminiAnalysisError)
+
+    for attempt in range(1, GEMINI_MAX_PARSE_ATTEMPTS + 1):
+        response = await asyncio.wait_for(
+            asyncio.to_thread(
+                client.models.generate_content,
+                model=model,
+                contents=contents,
+                config=config,
+            ),
+            timeout=GEMINI_TIMEOUT_SECONDS,
+        )
+
+        try:
+            return _parse_gemini_response(response)
+        except parse_error_types as exc:
+            if not _is_retriable_parse_failure(exc):
+                raise
+
+            last_parse_exc = exc
+            if attempt >= GEMINI_MAX_PARSE_ATTEMPTS:
+                break
+
+            _log_parse_retry(
+                request_id=request_id,
+                model=model,
+                attempt=attempt,
+                exc=exc,
+            )
+
+    raise GeminiAnalysisError(
+        "InvalidGeminiStructuredJson",
+        safe_message=INVALID_STRUCTURED_JSON_SAFE_MESSAGE,
+    ) from last_parse_exc
 
 
 async def analyze_image_with_gemini(
@@ -202,20 +311,17 @@ async def analyze_image_with_gemini(
         config = types.GenerateContentConfig(
             response_mime_type="application/json",
             response_schema=GeminiProductResponse,
-            max_output_tokens=1024,
+            max_output_tokens=GEMINI_MAX_OUTPUT_TOKENS,
             temperature=0.1,
         )
 
-        response = await asyncio.wait_for(
-            asyncio.to_thread(
-                client.models.generate_content,
-                model=settings.gemini_model,
-                contents=[image_part, text_part],
-                config=config,
-            ),
-            timeout=GEMINI_TIMEOUT_SECONDS,
+        parsed = await _generate_and_parse_with_retries(
+            client=client,
+            request_id=request_id,
+            model=settings.gemini_model,
+            contents=[image_part, text_part],
+            config=config,
         )
-        parsed = _parse_gemini_response(response)
     except asyncio.TimeoutError as exc:
         raise _gemini_analysis_error_from_exception(
             exc, api_key=settings.gemini_api_key
