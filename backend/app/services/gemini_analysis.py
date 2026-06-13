@@ -330,6 +330,8 @@ async def analyze_image_with_gemini(
         raise _gemini_analysis_error_from_exception(
             exc, api_key=settings.gemini_api_key
         ) from exc
+    except GeminiAnalysisError:
+        raise
     except Exception as exc:
         raise _gemini_analysis_error_from_exception(
             exc, api_key=settings.gemini_api_key
