@@ -20,22 +20,45 @@ const EMPTY_SNAPSHOT: AnalysisStorageSnapshot = {
   activity: [],
 }
 
+let cachedClientSnapshot: AnalysisStorageSnapshot = EMPTY_SNAPSHOT
+let cachedClientSnapshotKey = ""
+
+function buildSnapshotKey(snapshot: AnalysisStorageSnapshot): string {
+  return JSON.stringify({
+    latestId: snapshot.latest?.request_id ?? null,
+    storedAt: snapshot.storedAt,
+    historyIds: snapshot.history.map((item) => item.analysis.request_id),
+    activityIds: snapshot.activity.map((item) => item.request_id),
+  })
+}
+
 function subscribeToAnalysisStorage(onStoreChange: () => void): () => void {
-  window.addEventListener("snapinsight-storage-change", onStoreChange)
-  window.addEventListener("storage", onStoreChange)
+  const handleStoreChange = () => {
+    cachedClientSnapshotKey = ""
+    onStoreChange()
+  }
+
+  window.addEventListener("snapinsight-storage-change", handleStoreChange)
+  window.addEventListener("storage", handleStoreChange)
   return () => {
-    window.removeEventListener("snapinsight-storage-change", onStoreChange)
-    window.removeEventListener("storage", onStoreChange)
+    window.removeEventListener("snapinsight-storage-change", handleStoreChange)
+    window.removeEventListener("storage", handleStoreChange)
   }
 }
 
 function getClientSnapshot(): AnalysisStorageSnapshot {
-  return {
+  const nextSnapshot: AnalysisStorageSnapshot = {
     latest: getLatestAnalysis(),
     storedAt: getLatestAnalysisStoredAt(),
     history: getAnalysisHistory(),
     activity: getActivityLog(),
   }
+  const nextKey = buildSnapshotKey(nextSnapshot)
+  if (nextKey !== cachedClientSnapshotKey) {
+    cachedClientSnapshotKey = nextKey
+    cachedClientSnapshot = nextSnapshot
+  }
+  return cachedClientSnapshot
 }
 
 export function useAnalysisStorage(): AnalysisStorageSnapshot {
