@@ -52,7 +52,7 @@ export function LandingScreen() {
               {/* Analyzing chip */}
               <div className="absolute bottom-12 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-3 py-1.5 bg-slate-800/90 border border-white/10 rounded-full">
                 <div className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-pulse" />
-                <span className="mono-label text-violet-400">Preview</span>
+                <span className="mono-label text-violet-400">Analyzing</span>
               </div>
             </div>
           </div>
@@ -82,7 +82,7 @@ export function LandingScreen() {
             className="flex items-center justify-center gap-2 w-full h-14 gradient-primary rounded-full text-white font-semibold text-base shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 transition-shadow touch-target"
           >
             <ScanLine className="w-5 h-5" />
-            Start scan (preview)
+            Start scan
           </Link>
 
           {/* Secondary CTA */}

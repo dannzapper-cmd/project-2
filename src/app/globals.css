@@ -247,29 +247,6 @@
   max-height: 14px;
 }
 
-.evidence-graph-flow .react-flow__minimap {
-  width: 120px;
-  height: 80px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-}
-
-.evidence-graph-flow .react-flow__minimap-mask {
-  fill: color-mix(in srgb, var(--background) 72%, transparent);
-}
-
-.evidence-graph-flow .react-flow__minimap-node {
-  fill: var(--primary);
-}
-
-@media (max-width: 768px) {
-  .evidence-graph-flow .react-flow__minimap {
-    display: none;
-  }
-}
-
 .evidence-graph-flow .react-flow__edge.animated path {
   stroke-dasharray: 5 5;
   animation: evidence-edge-dash 1s linear infinite;

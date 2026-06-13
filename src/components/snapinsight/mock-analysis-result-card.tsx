@@ -223,7 +223,7 @@ export function MockAnalysisResultCard({ result }: MockAnalysisResultCardProps) 
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">
-            {groundingMessage ?? "Not connected yet"}
+            {groundingMessage ?? "No citations available for this product."}
           </p>
         )}
         {groundingMessage && result.citations.length > 0 && (
