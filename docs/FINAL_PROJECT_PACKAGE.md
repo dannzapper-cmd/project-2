@@ -3,7 +3,7 @@
 **Product:** AI Visual Companion for Products (food & CPG)  
 **Production frontend:** https://project-2-wine-seven.vercel.app  
 **Production backend health:** https://snapinsight-backend-87dm.onrender.com/health  
-**Last updated:** 2026-06-13
+**Last updated:** 2026-06-13 (post-merge evidence refresh, PR #30)
 
 ---
 
@@ -85,7 +85,7 @@ See [PRIVACY_AND_COST_CONTROLS.md](./PRIVACY_AND_COST_CONTROLS.md).
 
 ## Evidence screenshots
 
-Captured via `npm run evidence:screenshots`. Index: [evidence/screenshots/README.md](./evidence/screenshots/README.md).
+Captured via `npm run evidence:screenshots` from production after PR #30 (storage-hook fix). Dedicated `/insights`, `/compare`, and `/activity` routes are used for screenshots 03–05 (mobile) and 03–05 (desktop). Index: [evidence/screenshots/README.md](./evidence/screenshots/README.md).
 
 | Screenshot | Proves |
 |------------|--------|
