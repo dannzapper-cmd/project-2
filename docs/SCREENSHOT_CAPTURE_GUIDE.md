@@ -25,8 +25,9 @@ Do **not** set or commit API keys, Live access codes, or auth tokens for capture
 2. **Generates synthetic demo labels** — Non-branded PNGs saved to `docs/evidence/demo-assets/`.
 3. **Runs production flows** — Upload → Analyze → wait for real Gemini result.
 4. **Captures mobile and desktop screenshots** — See `docs/evidence/screenshots/README.md`.
-5. **Captures workflow panels** — Insights, compare, and metrics from `/scan` scroll sections (dedicated `/insights`, `/compare`, `/activity` routes work after the storage-hook fix is deployed).
-6. **Creates preview thumbnail** — `docs/evidence/preview/scan-result-preview.png`.
+5. **Captures dedicated routes** — After scan + localStorage persistence, navigates to `/insights`, `/compare`, and `/activity` for screenshots (verified post PR #30).
+6. **Captures graph and Live on `/scan`** — Evidence graph and Gemini Live gated UI from the scan workflow.
+7. **Creates preview thumbnail** — `docs/evidence/preview/scan-result-preview.png`.
 
 ## Output locations
 
@@ -36,7 +37,7 @@ docs/evidence/
 ├── preview/              # Optional thumbnail
 └── screenshots/
     ├── mobile/           # 7 mobile captures
-    ├── desktop/          # 4 desktop captures
+    ├── desktop/          # 5 desktop captures
     └── README.md         # Manifest (auto-updated on success)
 ```
 

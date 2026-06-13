@@ -1,18 +1,36 @@
-# Final QA audit — Proyecto 2 close-out
+# Final QA audit — SnapInsight close-out
 
-**Audit date:** 2026-06-12  
-**Scope:** Senior QA + deploy readiness + portfolio packaging (no new features)  
-**Branch:** `cursor/final-qa-closeout-c7e6`
-
----
-
-## Executive summary
-
-SnapInsight is **production-like and portfolio-ready** as a cost-controlled mobile-first PWA with real Gemini analysis (when configured), session/daily guardrails, cited grounding, chat, compare, and in-memory observability. Gemini Live and app store publication are **explicitly out of scope** for this close-out.
+**Audit date:** 2026-06-13 (post-merge evidence refresh)  
+**Scope:** Production route verification, evidence recapture, security/privacy audit  
+**Prior close-out:** 2026-06-12 (`cursor/final-qa-closeout-c7e6`)
 
 ---
 
-## Checks executed
+## Post-merge verification (PR #30)
+
+| Check | Result |
+|-------|--------|
+| PR #30 merged to `main` | **PASS** — `ef52e72` |
+| Production `/scan` | **PASS** — HTTP 200, no client crash |
+| Production `/insights` | **PASS** — dedicated route, latest analysis from localStorage |
+| Production `/compare` | **PASS** — dedicated route, two-product compare workflow |
+| Production `/activity` | **PASS** — metrics, usage limits, mock fallback disabled |
+| Backend `/health` | **PASS** — `gemini`, `mock_fallback_allowed: false`, Live enabled |
+| Backend `/v1/metrics/summary` | **PASS** — limits: 5 analyses/session, $5 daily, 10 chat, 3 compare |
+| Backend `/v1/live/config` | **PASS** — `requires_access_code: true`, 60s session, 1 FPS |
+| `npm run evidence:screenshots` | **PASS** — real Gemini, dedicated routes, no secrets in PNGs |
+| Secret scan (grep) | **PASS** — no committed API keys or access codes |
+| No `.env` committed | **PASS** |
+
+---
+
+## Executive summary (2026-06-12 baseline)
+
+SnapInsight is **production-like and portfolio-ready** as a cost-controlled mobile-first PWA with real Gemini analysis (when configured), session/daily guardrails, cited grounding, chat, compare, and in-memory observability. Gemini Live is **access-code gated** and experimental. App store publication is **out of scope**.
+
+---
+
+## Checks executed (baseline)
 
 | Check | Command / action | Result |
 |-------|------------------|--------|

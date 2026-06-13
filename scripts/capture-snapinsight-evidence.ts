@@ -271,24 +271,112 @@ async function uploadAndAnalyze(
   return analysis
 }
 
-async function captureWorkflowPanels(
-  page: Page,
-  targets: { insights: string; compare: string; activity: string }
-): Promise<void> {
-  await scrollToText(page, "AI Analysis")
-  await sleep(500)
-  await screenshot(page, targets.insights)
+async function waitForProductionBannerReady(page: Page): Promise<void> {
+  const readyBanner = page.getByText(
+    /Gemini real analysis · Cost controlled · Live gated|Gemini mode · Grounded product intelligence/i
+  )
 
-  await scrollToText(page, "Compare products")
-  await sleep(500)
-  await screenshot(page, targets.compare)
+  for (let attempt = 1; attempt <= 4; attempt += 1) {
+    const isReady = await readyBanner.isVisible().catch(() => false)
+    if (isReady) return
 
-  const metricsButton = page.getByRole("button", { name: /Status & metrics/i })
-  if (await metricsButton.isVisible().catch(() => false)) {
-    await metricsButton.click()
-    await sleep(1500)
+    if (attempt < 4) {
+      await warmBackend()
+      await page.reload({ waitUntil: "domcontentloaded" })
+      await sleep(2000)
+    }
   }
-  await screenshot(page, targets.activity)
+
+  throw new Error("Production banner did not reach Gemini ready state")
+}
+
+async function verifyDedicatedRoutes(page: Page): Promise<void> {
+  const routes = ["/insights", "/compare", "/activity"] as const
+  const pageErrors: string[] = []
+
+  page.on("pageerror", (error) => {
+    pageErrors.push(error.message)
+  })
+
+  for (const route of routes) {
+    pageErrors.length = 0
+    await page.goto(`${BASE_URL}${route}`, { waitUntil: "domcontentloaded" })
+    await sleep(1500)
+
+    const bodyText = await page.locator("body").innerText()
+    const crashed =
+      bodyText.includes("Application error") ||
+      bodyText.includes("client-side exception")
+
+    if (crashed || pageErrors.length > 0) {
+      const details = pageErrors.length > 0 ? pageErrors.join(" | ") : bodyText.slice(0, 200)
+      throw new Error(`Dedicated route ${route} crashed: ${details}`)
+    }
+  }
+}
+
+async function waitForDedicatedRouteContent(page: Page, route: string): Promise<void> {
+  if (route === "/insights") {
+    await page
+      .getByRole("heading", { name: /Latest product insights/i })
+      .waitFor({ state: "visible", timeout: 15_000 })
+    return
+  }
+
+  if (route === "/compare") {
+    await page
+      .getByRole("heading", { name: /Compare products/i })
+      .waitFor({ state: "visible", timeout: 15_000 })
+    await page
+      .getByText(/Product A|Add products/i)
+      .first()
+      .waitFor({ state: "visible", timeout: 15_000 })
+    return
+  }
+
+  if (route === "/activity") {
+    await page
+      .getByRole("heading", { name: "Activity" })
+      .waitFor({ state: "visible", timeout: 15_000 })
+
+    const refreshButton = page.getByRole("button", { name: /Refresh/i })
+    const usageLimits = page.getByText("Usage limits", { exact: true })
+    const backendStatus = page.getByText("Backend status", { exact: true })
+    const unavailable = page.getByText(/Backend metrics are unavailable/i)
+
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      const ready = await Promise.race([
+        usageLimits.waitFor({ state: "visible", timeout: 20_000 }).then(() => "metrics"),
+        unavailable.waitFor({ state: "visible", timeout: 20_000 }).then(() => "unavailable"),
+        backendStatus.waitFor({ state: "visible", timeout: 20_000 }).then(() => "status"),
+      ]).catch(() => null)
+
+      if (ready) return
+
+      if (attempt < 3 && (await refreshButton.isVisible().catch(() => false))) {
+        await refreshButton.click()
+        await sleep(2500)
+      }
+    }
+
+    throw new Error("Activity route did not load metrics or fallback content in time")
+  }
+}
+
+async function captureDedicatedRoute(
+  page: Page,
+  route: "/insights" | "/compare" | "/activity",
+  filePath: string
+): Promise<void> {
+  if (route === "/activity") {
+    await warmBackend()
+  }
+
+  await page.goto(`${BASE_URL}${route}`, { waitUntil: "domcontentloaded" })
+  await waitForDedicatedRouteContent(page, route)
+  await waitForProductionBannerReady(page)
+  await sleep(800)
+  await screenshot(page, filePath)
 }
 
 async function scrollToText(page: Page, text: string): Promise<void> {
@@ -311,25 +399,30 @@ async function captureMobileFlow(
 
   await page.goto(`${BASE_URL}/scan`, { waitUntil: "domcontentloaded" })
   await sleep(1500)
+  await waitForProductionBannerReady(page)
   await screenshot(page, path.join(MOBILE_DIR, "01-scan-empty-or-upload.png"))
 
   await uploadAndAnalyze(page, labelPaths["demo-product-label.png"])
   await sleep(1000)
+  await waitForProductionBannerReady(page)
   await screenshot(page, path.join(MOBILE_DIR, "02-scan-gemini-result.png"))
-
-  const analysisB = await uploadAndAnalyze(page, labelPaths["demo-product-label-b.png"])
-  void analysisB
-
-  await captureWorkflowPanels(page, {
-    insights: path.join(MOBILE_DIR, "03-insights-latest-analysis.png"),
-    compare: path.join(MOBILE_DIR, "04-compare-workflow.png"),
-    activity: path.join(MOBILE_DIR, "05-activity-metrics-limits.png"),
-  })
 
   const graphToggle = page.getByRole("button", { name: /Evidence Graph/i })
   if (await graphToggle.isVisible().catch(() => false)) {
     await graphToggle.click()
-    await sleep(1500)
+    await Promise.race([
+      page
+        .locator(".evidence-graph-flow")
+        .waitFor({ state: "visible", timeout: 90_000 }),
+      page
+        .getByText(/Evidence graph unavailable|Graph request failed/i)
+        .waitFor({ state: "visible", timeout: 90_000 }),
+      page
+        .getByText("No graph nodes available")
+        .waitFor({ state: "visible", timeout: 90_000 }),
+    ])
+    await scrollToText(page, "Evidence Graph")
+    await sleep(1000)
     await screenshot(page, path.join(MOBILE_DIR, "06-graph-evidence-no-minimap.png"))
   } else {
     console.warn("Evidence Graph not visible on scan — skipping 06-graph-evidence-no-minimap.png")
@@ -337,7 +430,29 @@ async function captureMobileFlow(
 
   await scrollToText(page, "Gemini Live Voice + Vision")
   await sleep(800)
+  await waitForProductionBannerReady(page)
   await screenshot(page, path.join(MOBILE_DIR, "07-gemini-live-ready-access-gated.png"))
+
+  const analysisB = await uploadAndAnalyze(page, labelPaths["demo-product-label-b.png"])
+  void analysisB
+
+  await verifyDedicatedRoutes(page)
+
+  await captureDedicatedRoute(
+    page,
+    "/insights",
+    path.join(MOBILE_DIR, "03-insights-latest-analysis.png")
+  )
+  await captureDedicatedRoute(
+    page,
+    "/compare",
+    path.join(MOBILE_DIR, "04-compare-workflow.png")
+  )
+  await captureDedicatedRoute(
+    page,
+    "/activity",
+    path.join(MOBILE_DIR, "05-activity-metrics-limits.png")
+  )
 
   await context.close()
 }
@@ -354,6 +469,7 @@ async function captureDesktopFlow(
 
   await page.goto(`${BASE_URL}/scan`, { waitUntil: "domcontentloaded" })
   await sleep(1200)
+  await waitForProductionBannerReady(page)
   await screenshot(page, path.join(DESKTOP_DIR, "01-home-or-scan-desktop.png"))
 
   const desktopAnalysisA = await uploadAndAnalyze(
@@ -361,21 +477,29 @@ async function captureDesktopFlow(
     labelPaths["demo-product-label.png"]
   )
   await sleep(1000)
+  await waitForProductionBannerReady(page)
   await screenshot(page, path.join(DESKTOP_DIR, "02-scan-result-desktop.png"))
 
   void desktopAnalysisA
   await uploadAndAnalyze(page, labelPaths["demo-product-label-b.png"])
 
-  await scrollToText(page, "Compare products")
-  await sleep(500)
-  await screenshot(page, path.join(DESKTOP_DIR, "04-compare-desktop.png"))
+  await verifyDedicatedRoutes(page)
 
-  const metricsButton = page.getByRole("button", { name: /Status & metrics/i })
-  if (await metricsButton.isVisible().catch(() => false)) {
-    await metricsButton.click()
-    await sleep(1500)
-  }
-  await screenshot(page, path.join(DESKTOP_DIR, "03-activity-dashboard-desktop.png"))
+  await captureDedicatedRoute(
+    page,
+    "/activity",
+    path.join(DESKTOP_DIR, "03-activity-dashboard-desktop.png")
+  )
+  await captureDedicatedRoute(
+    page,
+    "/compare",
+    path.join(DESKTOP_DIR, "04-compare-desktop.png")
+  )
+  await captureDedicatedRoute(
+    page,
+    "/insights",
+    path.join(DESKTOP_DIR, "05-insights-desktop.png")
+  )
 
   await context.close()
 }
@@ -395,9 +519,18 @@ async function writeCaptureManifest(): Promise<void> {
 
 **Captured from:** \`${BASE_URL}\` (production unless overridden)  
 **Capture command:** \`npm run evidence:screenshots\`  
-**Last capture:** ${capturedAt}
+**Last capture:** ${capturedAt}  
+**Post-merge:** Captured after PR #30 storage-hook fix — dedicated \`/insights\`, \`/compare\`, and \`/activity\` routes verified before screenshots.
 
-**Note:** Screenshots \`03\`–\`05\` (mobile) and compare/metrics desktop captures are taken from the production \`/scan\` workflow panels until the storage-hook fix is deployed to production dedicated routes.
+## Quality audit
+
+- No secrets visible in committed screenshots
+- No access code visible
+- No auth tokens visible
+- Synthetic demo labels only (generated by capture script)
+- Real Gemini output when scan succeeds (script aborts on mock or analysis failure)
+- Dedicated routes verified after PR #30 deploy
+- Graph and Gemini Live captured from \`/scan\` (no separate routes)
 
 ## Privacy
 
@@ -411,10 +544,10 @@ async function writeCaptureManifest(): Promise<void> {
 |------|--------|
 | \`01-scan-empty-or-upload.png\` | Mobile-first scan entry, upload/camera UX, calm backend banner |
 | \`02-scan-gemini-result.png\` | Real Gemini multimodal analysis on synthetic label |
-| \`03-insights-latest-analysis.png\` | Local persistence of latest analysis JSON on Insights |
-| \`04-compare-workflow.png\` | Compare flow using saved analysis JSON (no image bytes) |
-| \`05-activity-metrics-limits.png\` | Activity log + backend metrics and usage limits |
-| \`06-graph-evidence-no-minimap.png\` | Evidence graph without minimap/overview panel |
+| \`03-insights-latest-analysis.png\` | \`/insights\` route — latest analysis from local JSON persistence |
+| \`04-compare-workflow.png\` | \`/compare\` route — compare workflow with saved analyses |
+| \`05-activity-metrics-limits.png\` | \`/activity\` route — backend metrics, usage limits, local scan log |
+| \`06-graph-evidence-no-minimap.png\` | Evidence graph on \`/scan\` without minimap/overview panel |
 | \`07-gemini-live-ready-access-gated.png\` | Gemini Live ready state with access-code gate (no secrets shown) |
 
 ## Desktop (\`desktop/\`)
@@ -423,8 +556,9 @@ async function writeCaptureManifest(): Promise<void> {
 |------|--------|
 | \`01-home-or-scan-desktop.png\` | Desktop scan layout |
 | \`02-scan-result-desktop.png\` | Gemini analysis result at desktop width |
-| \`03-activity-dashboard-desktop.png\` | Activity / metrics dashboard |
-| \`04-compare-desktop.png\` | Compare workflow on desktop |
+| \`03-activity-dashboard-desktop.png\` | \`/activity\` route — metrics and usage limits |
+| \`04-compare-desktop.png\` | \`/compare\` route on desktop |
+| \`05-insights-desktop.png\` | \`/insights\` route on desktop |
 
 ## Demo assets
 

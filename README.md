@@ -129,7 +129,7 @@ Production runs **Gemini real analysis** (`SNAPINSIGHT_ANALYSIS_MODE=gemini`), *
 
 **Mobile:** [scan](./docs/evidence/screenshots/mobile/01-scan-empty-or-upload.png) · [Gemini result](./docs/evidence/screenshots/mobile/02-scan-gemini-result.png) · [insights](./docs/evidence/screenshots/mobile/03-insights-latest-analysis.png) · [compare](./docs/evidence/screenshots/mobile/04-compare-workflow.png) · [activity](./docs/evidence/screenshots/mobile/05-activity-metrics-limits.png) · [graph](./docs/evidence/screenshots/mobile/06-graph-evidence-no-minimap.png) · [Live gated](./docs/evidence/screenshots/mobile/07-gemini-live-ready-access-gated.png)
 
-**Desktop:** [scan](./docs/evidence/screenshots/desktop/01-home-or-scan-desktop.png) · [result](./docs/evidence/screenshots/desktop/02-scan-result-desktop.png) · [activity](./docs/evidence/screenshots/desktop/03-activity-dashboard-desktop.png) · [compare](./docs/evidence/screenshots/desktop/04-compare-desktop.png)
+**Desktop:** [scan](./docs/evidence/screenshots/desktop/01-home-or-scan-desktop.png) · [result](./docs/evidence/screenshots/desktop/02-scan-result-desktop.png) · [activity](./docs/evidence/screenshots/desktop/03-activity-dashboard-desktop.png) · [compare](./docs/evidence/screenshots/desktop/04-compare-desktop.png) · [insights](./docs/evidence/screenshots/desktop/05-insights-desktop.png)
 
 ## Documentation
 
@@ -150,7 +150,7 @@ Production runs **Gemini real analysis** (`SNAPINSIGHT_ANALYSIS_MODE=gemini`), *
 
 ## Current status
 
-**Final evidence packaging.** Gemini real mode, usage/cost guardrails, and gated Gemini Live on production. Evidence capture via Playwright; see [docs/FINAL_PROJECT_PACKAGE.md](./docs/FINAL_PROJECT_PACKAGE.md).
+**Post-merge evidence refresh (PR #30).** Production dedicated routes (`/insights`, `/compare`, `/activity`) verified stable. Gemini real mode, usage/cost guardrails, and gated Gemini Live on production. Evidence recaptured via Playwright from production; see [docs/FINAL_PROJECT_PACKAGE.md](./docs/FINAL_PROJECT_PACKAGE.md).
 
 ---
 
