@@ -7,7 +7,6 @@ import {
   Controls,
   EdgeLabelRenderer,
   getBezierPath,
-  MiniMap,
   ReactFlow,
   type Edge,
   type EdgeProps,
@@ -261,14 +260,6 @@ export function EvidenceGraphFlow({
           style={{ opacity: 0.18 }}
         />
         <Controls showInteractive={false} position="bottom-left" />
-        <MiniMap
-          pannable
-          zoomable
-          position="bottom-right"
-          nodeColor={() => "var(--primary)"}
-          maskColor="color-mix(in srgb, var(--background) 72%, transparent)"
-          maskStrokeColor="var(--border)"
-        />
       </ReactFlow>
     </div>
   )

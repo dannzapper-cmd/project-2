@@ -5,6 +5,7 @@ import { Images, Zap } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useCameraSnapshot } from "@/hooks/use-camera-snapshot"
 import { useLocalImagePreview } from "@/hooks/use-local-image-preview"
+import { persistSuccessfulAnalysis } from "@/lib/analysis-storage"
 import {
   analyzeImage,
   type AnalysisResponse,
@@ -298,6 +299,7 @@ export function ImageInputPanel({ className }: ImageInputPanelProps) {
       const result = await analyzeImage(fileToSend, controller.signal)
       if (controller.signal.aborted) return
       setAnalysisResult(result)
+      persistSuccessfulAnalysis(result)
       registerAnalysisForCompare(result)
 
       if (sessionModeEnabled && productSession) {

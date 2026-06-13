@@ -7,7 +7,7 @@ import { BottomNav } from "@/components/shared/bottom-nav"
 import { PreviewBanner } from "@/components/shared/preview-banner"
 
 const statusChips = [
-  { label: "Privacy-first (planned)", icon: Lock },
+  { label: "Privacy-first", icon: Lock },
   { label: "Evidence-ready", icon: CheckCircle },
   { label: "Confidence-aware", icon: Layers },
 ]
@@ -33,8 +33,8 @@ export function HomeScreen() {
 
           {/* Subtext */}
           <p className="text-sm text-muted-foreground leading-relaxed mb-6">
-            Upload a photo or capture with your camera on the scan screen. Analysis
-            is not connected yet.
+            Upload a photo or capture with your camera for Gemini-powered analysis
+            with Open Food Facts grounding.
           </p>
 
           {/* Primary CTA */}
